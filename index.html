@@ -897,6 +897,9 @@
         }
 
         function updateUI() {
+            // Don't update UI if game is won (level 4+ doesn't exist)
+            if (gameState === 'win' || !levels[currentLevel]) return;
+            
             document.getElementById('levelDisplay').textContent = `Level ${currentLevel}: ${levels[currentLevel].name}`;
             document.getElementById('scoreDisplay').textContent = score;
             const xpPercent = (xp / xpNeeded) * 100;
