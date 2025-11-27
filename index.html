@@ -783,7 +783,10 @@
                     height: 70,
                     speed: 0, // Hunter doesn't move
                     shootTimer: 0,
-                    graceTimer: 180 // 3 seconds before hunter starts shooting (60fps * 3)
+                    graceTimer: 180, // 3 seconds before hunter starts shooting (60fps * 3)
+                    shotsFired: 0, // Track shots in current burst
+                    reloadTimer: 0, // 10 second reload after 3 shots
+                    isReloading: false
                 };
                 
                 // Spawn barriers for the turkey to hide behind
@@ -1086,9 +1089,18 @@
                 // Grace period at the start - hunter doesn't shoot immediately
                 if (hunter.graceTimer > 0) {
                     hunter.graceTimer--;
+                } else if (hunter.isReloading) {
+                    // Hunter is reloading - 10 seconds (600 frames at 60fps)
+                    hunter.reloadTimer++;
+                    if (hunter.reloadTimer >= 600) {
+                        hunter.isReloading = false;
+                        hunter.reloadTimer = 0;
+                        hunter.shotsFired = 0;
+                    }
                 } else {
+                    // Hunter can shoot - fires 3 shots then reloads
                     hunter.shootTimer++;
-                    if (hunter.shootTimer > 90) {
+                    if (hunter.shootTimer > 60) { // Slightly faster between shots in burst
                         hunter.shootTimer = 0;
                         const angle = Math.atan2(turkey.y - hunter.y, turkey.x - hunter.x);
                         bossProjectiles.push({
@@ -1099,6 +1111,12 @@
                             size: 15,
                             isHunter: true
                         });
+                        
+                        hunter.shotsFired++;
+                        if (hunter.shotsFired >= 3) {
+                            // Start reloading after 3 shots
+                            hunter.isReloading = true;
+                        }
                     }
                 }
 
@@ -1645,6 +1663,26 @@
                 ctx.fillStyle = 'rgba(255, 200, 0, 0.8)';
                 ctx.font = 'bold 18px Fraunces';
                 ctx.fillText('FIND COVER!', 0, 80);
+            } else if (hunter.isReloading) {
+                // Show reloading indicator
+                ctx.fillStyle = 'rgba(100, 200, 255, 0.9)';
+                ctx.font = 'bold 14px Fraunces';
+                ctx.textAlign = 'center';
+                const secondsLeft = Math.ceil((600 - hunter.reloadTimer) / 60);
+                ctx.fillText('🔄 RELOADING ' + secondsLeft + 's', 0, -70);
+                
+                // Reload progress bar
+                ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+                ctx.fillRect(-30, -60, 60, 8);
+                ctx.fillStyle = 'rgba(100, 200, 255, 0.9)';
+                ctx.fillRect(-30, -60, 60 * (hunter.reloadTimer / 600), 8);
+            } else {
+                // Show shots remaining
+                ctx.fillStyle = 'rgba(255, 100, 100, 0.9)';
+                ctx.font = 'bold 12px Fraunces';
+                ctx.textAlign = 'center';
+                const shotsLeft = 3 - hunter.shotsFired;
+                ctx.fillText('🎯 ' + shotsLeft + ' shots', 0, -70);
             }
             
             ctx.restore();
