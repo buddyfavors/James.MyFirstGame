@@ -486,7 +486,7 @@
             <div style="font-size: 80px;">🥧</div>
             <h1>Boss Fight!</h1>
             <p class="boss-name">Pumpkin Pie</p>
-            <p class="instructions">The dreaded Pumpkin Pie appears!<br>Eat apples OR get close and <strong>PECK</strong> to damage it!<br><span class="desktop-controls">Press SPACE to peck!</span><span class="mobile-controls">Double-tap to peck!</span></p>
+            <p class="instructions">The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck from range (<span class="desktop-controls">SPACE</span><span class="mobile-controls">double-tap</span>)<br>🦃 Or just <strong>EAT THE BOSS</strong> directly!</p>
             <button class="btn" onclick="startBossFight()">Fight!</button>
         </div>
 
@@ -943,6 +943,43 @@
                         vy: 6,
                         size: 20
                     });
+                }
+
+                // Turkey can EAT the boss by touching it!
+                const distToBoss = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
+                const eatRange = turkey.width / 2 + boss.width / 2 - 10; // Slightly smaller for more intentional eating
+                
+                if (distToBoss < eatRange) {
+                    // Turkey is eating the boss!
+                    boss.eatCooldown = boss.eatCooldown || 0;
+                    boss.eatCooldown--;
+                    
+                    if (boss.eatCooldown <= 0) {
+                        boss.eatCooldown = 20; // Cooldown between bites
+                        boss.health -= 2; // Eating does more damage than pecking!
+                        
+                        // Big chomp visual feedback
+                        turkey.mouthOpen = 1; // Force mouth wide open
+                        spawnParticles(boss.x, boss.y, '#FF7518', 15);
+                        spawnParticles(boss.x, boss.y, '#DEB887', 8); // Crust particles
+                        spawnParticles(turkey.x + turkey.direction * 30, turkey.y, '#FFD700', 5);
+                        
+                        // Push boss away slightly
+                        const pushDir = boss.x > turkey.x ? 1 : -1;
+                        boss.x += pushDir * 15;
+                        
+                        if (boss.health <= 0) {
+                            // Boss defeated by eating!
+                            spawnParticles(boss.x, boss.y, '#FFD700', 40);
+                            spawnParticles(boss.x, boss.y, '#FF7518', 30);
+                            spawnParticles(boss.x, boss.y, '#FFFAF0', 20); // Whipped cream explosion
+                            boss = null;
+                            score += 5; // Bonus for eating the boss!
+                            levelUp();
+                        }
+                        
+                        updateUI();
+                    }
                 }
             }
 
