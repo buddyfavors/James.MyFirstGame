@@ -795,7 +795,9 @@
                 maxHealth: 10,
                 speed: 2,
                 direction: 1,
-                attackTimer: 0
+                attackTimer: 0,
+                opacity: 1, // Boss starts fully visible
+                shotsThrown: 0 // Track how many projectiles thrown
             };
             apples = [];
             for (let i = 0; i < 3; i++) {
@@ -943,6 +945,25 @@
                         vy: 6,
                         size: 20
                     });
+                    
+                    // Boss loses health and fades when throwing pies!
+                    boss.shotsThrown++;
+                    boss.health -= 0.3; // Lose a small amount of health per shot
+                    boss.opacity = Math.max(0.2, 1 - (boss.shotsThrown * 0.04)); // Fade slowly, minimum 20% visible
+                    
+                    // Small visual feedback - boss flickers when shooting
+                    spawnParticles(boss.x, boss.y + boss.height / 2, '#FF7518', 5);
+                    
+                    // Check if boss defeated itself by throwing too many pies
+                    if (boss.health <= 0) {
+                        spawnParticles(boss.x, boss.y, '#FFD700', 30);
+                        spawnParticles(boss.x, boss.y, '#FF7518', 20);
+                        spawnParticles(boss.x, boss.y, '#FFFAF0', 15);
+                        boss = null;
+                        levelUp();
+                    }
+                    
+                    updateUI();
                 }
 
                 // Turkey can EAT the boss by touching it!
@@ -1365,6 +1386,9 @@
             ctx.save();
             ctx.translate(boss.x, boss.y);
             
+            // Apply fading opacity - boss fades as it throws more pies
+            ctx.globalAlpha = boss.opacity;
+            
             // Pie dish
             ctx.fillStyle = '#CD853F';
             ctx.beginPath();
@@ -1425,11 +1449,12 @@
             ctx.arc(0, 10, 15, 0.2, Math.PI - 0.2);
             ctx.stroke();
             
-            // Health bar
+            // Health bar - always fully visible even when boss is fading
+            ctx.globalAlpha = 1;
             ctx.fillStyle = '#333';
             ctx.fillRect(-40, -boss.height / 2 - 20, 80, 10);
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(-38, -boss.height / 2 - 18, 76 * (boss.health / boss.maxHealth), 6);
+            ctx.fillRect(-38, -boss.height / 2 - 18, 76 * Math.max(0, boss.health / boss.maxHealth), 6);
             
             ctx.restore();
         }
