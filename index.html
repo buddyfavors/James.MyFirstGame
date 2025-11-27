@@ -544,7 +544,7 @@
         const levels = {
             1: { name: 'Barn Turkey Barn', xpNeeded: 10, bgColor: '#8B4513', description: 'Eat apples in the cozy barn!' },
             2: { name: 'Turkey Run', xpNeeded: 15, bgColor: '#228B22', description: 'Run through the autumn fields!' },
-            3: { name: 'Hunter Hunt Down', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Escape the hunter!' }
+            3: { name: 'Hunter Hunt Down', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Hide behind barriers to survive! The hunter is waking up...' }
         };
 
         // Turkey
@@ -568,6 +568,9 @@
 
         // Hunter (Level 3)
         let hunter = null;
+
+        // Barriers for hiding
+        let barriers = [];
 
         // Particles
         let particles = [];
@@ -760,6 +763,7 @@
             bossProjectiles = [];
             boss = null;
             hunter = null;
+            barriers = [];
             xp = 0;
             xpNeeded = levels[currentLevel].xpNeeded;
             turkey.x = 300;
@@ -778,11 +782,57 @@
                     width: 50,
                     height: 70,
                     speed: 0, // Hunter doesn't move
-                    shootTimer: 0
+                    shootTimer: 0,
+                    graceTimer: 180 // 3 seconds before hunter starts shooting (60fps * 3)
                 };
+                
+                // Spawn barriers for the turkey to hide behind
+                spawnBarriers();
+                
+                // Start turkey in a random corner away from hunter
+                const corners = [
+                    { x: 80, y: 100 },           // Top-left
+                    { x: BASE_WIDTH - 80, y: 100 },   // Top-right
+                    { x: 80, y: BASE_HEIGHT - 150 },  // Bottom-left
+                    { x: BASE_WIDTH - 80, y: BASE_HEIGHT - 150 } // Bottom-right
+                ];
+                const randomCorner = corners[Math.floor(Math.random() * corners.length)];
+                turkey.x = randomCorner.x;
+                turkey.y = randomCorner.y;
             }
 
             updateUI();
+        }
+        
+        function spawnBarriers() {
+            barriers = [];
+            
+            // Create barriers around the arena for the turkey to hide behind
+            const barrierPositions = [
+                // Four corners - safe spots
+                { x: 120, y: 150, type: 'haybale' },
+                { x: BASE_WIDTH - 120, y: 150, type: 'haybale' },
+                { x: 120, y: BASE_HEIGHT - 200, type: 'haybale' },
+                { x: BASE_WIDTH - 120, y: BASE_HEIGHT - 200, type: 'haybale' },
+                // Mid positions
+                { x: BASE_WIDTH / 2 - 150, y: BASE_HEIGHT / 2 - 100, type: 'rock' },
+                { x: BASE_WIDTH / 2 + 150, y: BASE_HEIGHT / 2 - 100, type: 'rock' },
+                { x: BASE_WIDTH / 2 - 150, y: BASE_HEIGHT / 2 + 150, type: 'rock' },
+                { x: BASE_WIDTH / 2 + 150, y: BASE_HEIGHT / 2 + 150, type: 'rock' },
+                // Near the hunter but not blocking spawn
+                { x: BASE_WIDTH / 2, y: BASE_HEIGHT / 2 - 180, type: 'tree' },
+                { x: BASE_WIDTH / 2, y: BASE_HEIGHT / 2 + 200, type: 'tree' }
+            ];
+            
+            barrierPositions.forEach(pos => {
+                barriers.push({
+                    x: pos.x,
+                    y: pos.y,
+                    width: pos.type === 'tree' ? 40 : 60,
+                    height: pos.type === 'tree' ? 80 : 45,
+                    type: pos.type
+                });
+            });
         }
 
         function initBoss() {
@@ -801,6 +851,18 @@
                 missingSlices: [], // Track which slice angles are missing
                 currentScale: 1 // Visual scale that shrinks as pieces are thrown
             };
+            
+            // Start turkey in a random corner for boss fights
+            const corners = [
+                { x: 80, y: BASE_HEIGHT - 150 },      // Bottom-left
+                { x: BASE_WIDTH - 80, y: BASE_HEIGHT - 150 }, // Bottom-right
+                { x: 80, y: BASE_HEIGHT - 300 },      // Mid-left
+                { x: BASE_WIDTH - 80, y: BASE_HEIGHT - 300 }  // Mid-right
+            ];
+            const randomCorner = corners[Math.floor(Math.random() * corners.length)];
+            turkey.x = randomCorner.x;
+            turkey.y = randomCorner.y;
+            
             apples = [];
             for (let i = 0; i < 3; i++) {
                 spawnApple();
@@ -1021,18 +1083,23 @@
             if (hunter && gameState === 'playing') {
                 // Hunter stays in place - no movement code
 
-                hunter.shootTimer++;
-                if (hunter.shootTimer > 90) {
-                    hunter.shootTimer = 0;
-                    const angle = Math.atan2(turkey.y - hunter.y, turkey.x - hunter.x);
-                    bossProjectiles.push({
-                        x: hunter.x,
-                        y: hunter.y,
-                        vx: Math.cos(angle) * 7,
-                        vy: Math.sin(angle) * 7,
-                        size: 15,
-                        isHunter: true
-                    });
+                // Grace period at the start - hunter doesn't shoot immediately
+                if (hunter.graceTimer > 0) {
+                    hunter.graceTimer--;
+                } else {
+                    hunter.shootTimer++;
+                    if (hunter.shootTimer > 90) {
+                        hunter.shootTimer = 0;
+                        const angle = Math.atan2(turkey.y - hunter.y, turkey.x - hunter.x);
+                        bossProjectiles.push({
+                            x: hunter.x,
+                            y: hunter.y,
+                            vx: Math.cos(angle) * 7,
+                            vy: Math.sin(angle) * 7,
+                            size: 15,
+                            isHunter: true
+                        });
+                    }
                 }
 
                 // Check collision with hunter
@@ -1054,6 +1121,22 @@
                     gameOver(proj.isHunter ? 'You got shot!' : 'The pie got you!');
                     return;
                 }
+                
+                // Check collision with barriers (projectiles get blocked)
+                let hitBarrier = false;
+                for (const barrier of barriers) {
+                    if (proj.x > barrier.x - barrier.width / 2 &&
+                        proj.x < barrier.x + barrier.width / 2 &&
+                        proj.y > barrier.y - barrier.height / 2 &&
+                        proj.y < barrier.y + barrier.height / 2) {
+                        // Projectile hit barrier - destroy it with particles
+                        spawnParticles(proj.x, proj.y, proj.isHunter ? '#555' : '#FF7518', 6);
+                        bossProjectiles.splice(i, 1);
+                        hitBarrier = true;
+                        break;
+                    }
+                }
+                if (hitBarrier) continue;
 
                 // Remove off-screen
                 if (proj.x < -50 || proj.x > canvas.width + 50 || proj.y < -50 || proj.y > canvas.height + 50) {
@@ -1550,7 +1633,112 @@
             ctx.arc(5, -32, 3, 0, Math.PI * 2);
             ctx.fill();
             
+            // Show grace period indicator with countdown
+            if (hunter.graceTimer > 0) {
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+                ctx.font = 'bold 14px Fraunces';
+                ctx.textAlign = 'center';
+                const secondsLeft = Math.ceil(hunter.graceTimer / 60);
+                ctx.fillText('💤 ' + secondsLeft + 's', 0, -70);
+                
+                // Warning text for player
+                ctx.fillStyle = 'rgba(255, 200, 0, 0.8)';
+                ctx.font = 'bold 18px Fraunces';
+                ctx.fillText('FIND COVER!', 0, 80);
+            }
+            
             ctx.restore();
+        }
+        
+        function drawBarriers() {
+            barriers.forEach(barrier => {
+                ctx.save();
+                ctx.translate(barrier.x, barrier.y);
+                
+                if (barrier.type === 'haybale') {
+                    // Draw hay bale
+                    ctx.fillStyle = '#DAA520';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, barrier.width / 2, barrier.height / 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Hay texture lines
+                    ctx.strokeStyle = '#B8860B';
+                    ctx.lineWidth = 2;
+                    for (let i = -2; i <= 2; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(i * 10 - 5, -barrier.height / 2 + 5);
+                        ctx.lineTo(i * 10 + 5, barrier.height / 2 - 5);
+                        ctx.stroke();
+                    }
+                    
+                    // Binding ropes
+                    ctx.strokeStyle = '#8B4513';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.ellipse(0, -barrier.height / 4, barrier.width / 2 - 3, 5, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.ellipse(0, barrier.height / 4, barrier.width / 2 - 3, 5, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                } else if (barrier.type === 'rock') {
+                    // Draw rock
+                    ctx.fillStyle = '#696969';
+                    ctx.beginPath();
+                    ctx.moveTo(-barrier.width / 2, barrier.height / 4);
+                    ctx.lineTo(-barrier.width / 3, -barrier.height / 2);
+                    ctx.lineTo(barrier.width / 4, -barrier.height / 2 + 5);
+                    ctx.lineTo(barrier.width / 2, -barrier.height / 4);
+                    ctx.lineTo(barrier.width / 2 - 5, barrier.height / 2);
+                    ctx.lineTo(-barrier.width / 3, barrier.height / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Rock highlights
+                    ctx.fillStyle = '#808080';
+                    ctx.beginPath();
+                    ctx.moveTo(-barrier.width / 4, -barrier.height / 3);
+                    ctx.lineTo(0, -barrier.height / 4);
+                    ctx.lineTo(-barrier.width / 6, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                } else if (barrier.type === 'tree') {
+                    // Draw tree stump/trunk
+                    ctx.fillStyle = '#4A3728';
+                    ctx.fillRect(-barrier.width / 2, -barrier.height / 4, barrier.width, barrier.height * 0.75);
+                    
+                    // Tree top (dark pine)
+                    ctx.fillStyle = '#1a3a1a';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -barrier.height / 2 - 30);
+                    ctx.lineTo(-barrier.width - 10, -barrier.height / 4);
+                    ctx.lineTo(barrier.width + 10, -barrier.height / 4);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Second layer
+                    ctx.beginPath();
+                    ctx.moveTo(0, -barrier.height / 2 - 10);
+                    ctx.lineTo(-barrier.width - 5, 0);
+                    ctx.lineTo(barrier.width + 5, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Bark texture
+                    ctx.strokeStyle = '#3D2914';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-5, 0);
+                    ctx.lineTo(-5, barrier.height / 2);
+                    ctx.moveTo(5, -5);
+                    ctx.lineTo(5, barrier.height / 2 - 10);
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            });
         }
 
         function drawProjectiles() {
@@ -1597,6 +1785,7 @@
             drawBackground();
             
             if (gameState === 'playing' || gameState === 'boss') {
+                drawBarriers(); // Draw barriers behind other elements
                 apples.forEach(drawApple);
                 drawProjectiles();
                 drawPeckIndicator(); // Draw peck range indicator behind turkey
