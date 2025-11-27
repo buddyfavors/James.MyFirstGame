@@ -444,7 +444,7 @@
 </head>
 <body>
     <div class="game-container">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <canvas id="gameCanvas" width="600" height="800"></canvas>
         
         <!-- Touch indicator for mobile -->
         <div class="touch-indicator" id="touchIndicator"></div>
@@ -514,8 +514,8 @@
         const gameContainer = document.querySelector('.game-container');
 
         // Base canvas dimensions (used for game logic)
-        const BASE_WIDTH = 800;
-        const BASE_HEIGHT = 600;
+        const BASE_WIDTH = 600;
+        const BASE_HEIGHT = 800;
 
         // Game State
         let gameState = 'start'; // start, playing, levelup, boss, gameover, win
@@ -541,8 +541,8 @@
 
         // Turkey
         const turkey = {
-            x: 400,
-            y: 300,
+            x: 300,
+            y: 400,
             width: 60,
             height: 50,
             speed: 5,
@@ -678,8 +678,8 @@
             score = 0;
             xp = 0;
             turkey.evolution = 1;
-            turkey.x = 400;
-            turkey.y = 300;
+            turkey.x = 300;
+            turkey.y = 400;
             gameState = 'playing';
             resetLevel();
         }
@@ -692,8 +692,8 @@
             hunter = null;
             xp = 0;
             xpNeeded = levels[currentLevel].xpNeeded;
-            turkey.x = 400;
-            turkey.y = 300;
+            turkey.x = 300;
+            turkey.y = 400;
             
             // Spawn initial apples
             for (let i = 0; i < 5; i++) {
@@ -703,8 +703,8 @@
             // Spawn hunter for level 3
             if (currentLevel === 3) {
                 hunter = {
-                    x: 700,
-                    y: 300,
+                    x: 500,
+                    y: 700,
                     width: 50,
                     height: 70,
                     speed: 2,
@@ -717,8 +717,8 @@
 
         function initBoss() {
             boss = {
-                x: 600,
-                y: 200,
+                x: 300,
+                y: 150,
                 width: 100,
                 height: 100,
                 health: 10,
@@ -849,20 +849,20 @@
 
             // Update boss
             if (gameState === 'boss' && boss) {
-                boss.y += boss.speed * boss.direction;
-                if (boss.y < 100 || boss.y > canvas.height - 150) {
+                boss.x += boss.speed * boss.direction;
+                if (boss.x < 100 || boss.x > BASE_WIDTH - 100) {
                     boss.direction *= -1;
                 }
 
                 boss.attackTimer++;
                 if (boss.attackTimer > 60) {
                     boss.attackTimer = 0;
-                    // Shoot projectile
+                    // Shoot projectile downward toward turkey
                     bossProjectiles.push({
                         x: boss.x,
                         y: boss.y + boss.height / 2,
-                        vx: -6,
-                        vy: (Math.random() - 0.5) * 4,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: 6,
                         size: 20
                     });
                 }
@@ -971,7 +971,7 @@
                 // Draw barn planks
                 ctx.strokeStyle = '#4A2C17';
                 ctx.lineWidth = 2;
-                for (let i = 0; i < canvas.width; i += 80) {
+                for (let i = 0; i < canvas.width; i += 60) {
                     ctx.beginPath();
                     ctx.moveTo(i, 0);
                     ctx.lineTo(i, canvas.height);
@@ -980,10 +980,10 @@
                 
                 // Hay on ground
                 ctx.fillStyle = '#DAA520';
-                for (let i = 0; i < 30; i++) {
+                for (let i = 0; i < 40; i++) {
                     ctx.beginPath();
                     ctx.ellipse(
-                        (i * 30) % canvas.width,
+                        (i * 25) % canvas.width,
                         canvas.height - 30 + Math.sin(i) * 10,
                         20, 8, 0, 0, Math.PI * 2
                     );
@@ -1002,13 +1002,13 @@
                 ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
                 
                 // Autumn trees
-                for (let i = 0; i < 5; i++) {
-                    const tx = i * 200 + 50;
+                for (let i = 0; i < 4; i++) {
+                    const tx = i * 160 + 50;
                     ctx.fillStyle = '#5D3A1A';
                     ctx.fillRect(tx - 10, canvas.height - 180, 20, 100);
                     ctx.beginPath();
                     ctx.fillStyle = ['#FF6347', '#FF8C00', '#FFD700', '#DC143C'][i % 4];
-                    ctx.arc(tx, canvas.height - 200, 60, 0, Math.PI * 2);
+                    ctx.arc(tx, canvas.height - 200, 50, 0, Math.PI * 2);
                     ctx.fill();
                 }
             } else {
@@ -1021,16 +1021,16 @@
                 // Moon
                 ctx.fillStyle = '#FFFACD';
                 ctx.beginPath();
-                ctx.arc(650, 80, 40, 0, Math.PI * 2);
+                ctx.arc(500, 80, 40, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Dark trees
                 ctx.fillStyle = '#0f0f23';
-                for (let i = 0; i < 8; i++) {
-                    const tx = i * 120;
+                for (let i = 0; i < 6; i++) {
+                    const tx = i * 100;
                     ctx.beginPath();
                     ctx.moveTo(tx, canvas.height);
-                    ctx.lineTo(tx + 40, canvas.height - 200 - Math.random() * 100);
+                    ctx.lineTo(tx + 40, canvas.height - 250 - Math.random() * 100);
                     ctx.lineTo(tx + 80, canvas.height);
                     ctx.fill();
                 }
