@@ -468,8 +468,8 @@
                 🍎 Eat apples to gain XP and level up<br>
                 🥧 Defeat the Pumpkin Pie boss<br>
                 🏃 Survive the hunter in the final level!<br><br>
-                <span class="desktop-controls">Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move</span>
-                <span class="mobile-controls">👆 <strong>Touch & drag</strong> anywhere to move</span>
+                <span class="desktop-controls">Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move<br>Press <strong>SPACE</strong> to peck attack!</span>
+                <span class="mobile-controls">👆 <strong>Touch & drag</strong> anywhere to move<br>👆👆 <strong>Double-tap</strong> to peck attack!</span>
             </div>
             <button class="btn" onclick="startGame()">Start Gobbling!</button>
         </div>
@@ -486,7 +486,7 @@
             <div style="font-size: 80px;">🥧</div>
             <h1>Boss Fight!</h1>
             <p class="boss-name">Pumpkin Pie</p>
-            <p class="instructions">The dreaded Pumpkin Pie appears!<br>Eat apples to damage it while avoiding its attacks!</p>
+            <p class="instructions">The dreaded Pumpkin Pie appears!<br>Eat apples OR get close and <strong>PECK</strong> to damage it!<br><span class="desktop-controls">Press SPACE to peck!</span><span class="mobile-controls">Double-tap to peck!</span></p>
             <button class="btn" onclick="startBossFight()">Fight!</button>
         </div>
 
@@ -532,6 +532,14 @@
         let touchCurrentY = 0;
         let canvasScale = 1;
 
+        // Peck attack state
+        let peckCooldown = 0;
+        const PECK_COOLDOWN_MAX = 30; // frames between pecks
+        const PECK_RANGE = 100; // distance to peck the boss
+        const PECK_DAMAGE = 1;
+        let isPecking = false;
+        let peckAnimTimer = 0;
+
         // Level definitions
         const levels = {
             1: { name: 'Barn Turkey Barn', xpNeeded: 10, bgColor: '#8B4513', description: 'Eat apples in the cozy barn!' },
@@ -571,12 +579,60 @@
         document.addEventListener('keydown', (e) => {
             keys[e.key.toLowerCase()] = true;
             keys[e.code] = true;
+            
+            // Peck attack on space bar
+            if (e.code === 'Space' && (gameState === 'boss' || gameState === 'playing')) {
+                e.preventDefault();
+                tryPeckAttack();
+            }
         });
 
         document.addEventListener('keyup', (e) => {
             keys[e.key.toLowerCase()] = false;
             keys[e.code] = false;
         });
+        
+        // Peck attack function
+        function tryPeckAttack() {
+            if (peckCooldown > 0) return;
+            if (gameState !== 'boss' || !boss) return;
+            
+            // Check if in range of boss
+            const distToBoss = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
+            
+            if (distToBoss < PECK_RANGE + boss.width / 2) {
+                // Successful peck!
+                isPecking = true;
+                peckAnimTimer = 15;
+                peckCooldown = PECK_COOLDOWN_MAX;
+                
+                // Damage boss
+                boss.health -= PECK_DAMAGE;
+                
+                // Visual feedback
+                spawnParticles(boss.x, boss.y, '#FF7518', 12);
+                spawnParticles(turkey.x + turkey.direction * 30, turkey.y - 10, '#FFD700', 8);
+                
+                // Knockback effect on boss
+                boss.x += (boss.x - turkey.x) * 0.1;
+                
+                if (boss.health <= 0) {
+                    // Boss defeated!
+                    spawnParticles(boss.x, boss.y, '#FFD700', 30);
+                    spawnParticles(boss.x, boss.y, '#FF7518', 20);
+                    boss = null;
+                    levelUp();
+                }
+                
+                updateUI();
+            } else {
+                // Out of range - still show peck animation but no damage
+                isPecking = true;
+                peckAnimTimer = 10;
+                peckCooldown = PECK_COOLDOWN_MAX / 2; // Shorter cooldown for missed peck
+                spawnParticles(turkey.x + turkey.direction * 40, turkey.y - 5, '#FFA500', 3);
+            }
+        }
 
         // Touch event helpers
         function getTouchPos(touch) {
@@ -595,12 +651,26 @@
             touchIndicator.style.top = (clientY - rect.top - offset) + 'px';
         }
 
+        // Double-tap detection for peck attack
+        let lastTapTime = 0;
+        const DOUBLE_TAP_DELAY = 300; // ms
+
         // Touch events for dragging movement
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (gameState !== 'playing' && gameState !== 'boss') return;
             
             const touch = e.touches[0];
+            const currentTime = Date.now();
+            
+            // Check for double-tap
+            if (currentTime - lastTapTime < DOUBLE_TAP_DELAY) {
+                tryPeckAttack();
+                lastTapTime = 0; // Reset to prevent triple-tap triggering
+            } else {
+                lastTapTime = currentTime;
+            }
+            
             touchActive = true;
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
@@ -767,6 +837,14 @@
 
         function update() {
             if (gameState !== 'playing' && gameState !== 'boss') return;
+
+            // Update peck cooldowns
+            if (peckCooldown > 0) peckCooldown--;
+            if (peckAnimTimer > 0) {
+                peckAnimTimer--;
+            } else {
+                isPecking = false;
+            }
 
             // Move turkey
             let dx = 0, dy = 0;
@@ -1049,6 +1127,10 @@
             const scale = 1 + (turkey.evolution - 1) * 0.2;
             ctx.scale(scale, scale);
             
+            // Peck animation - lunge forward
+            const peckLunge = isPecking ? Math.sin((peckAnimTimer / 15) * Math.PI) * 20 : 0;
+            ctx.translate(peckLunge, 0);
+            
             // Tail feathers
             const tailColors = ['#8B0000', '#FF4500', '#FFD700', '#8B4513', '#FF6347'];
             for (let i = 0; i < 5; i++) {
@@ -1056,7 +1138,7 @@
                 ctx.beginPath();
                 const angle = (i - 2) * 0.4 - Math.PI / 2;
                 ctx.ellipse(
-                    Math.cos(angle) * 25 - 10,
+                    Math.cos(angle) * 25 - 10 - peckLunge, // Tail stays back during peck
                     Math.sin(angle) * 25 - 5,
                     12, 30,
                     angle + Math.PI / 2,
@@ -1071,49 +1153,75 @@
             ctx.ellipse(0, 5, 25, 20, 0, 0, Math.PI * 2);
             ctx.fill();
             
-            // Head
+            // Head - move forward extra during peck
+            const headExtend = isPecking ? 10 : 0;
             ctx.fillStyle = '#8B4513';
             ctx.beginPath();
-            ctx.arc(20, -5, 15, 0, Math.PI * 2);
+            ctx.arc(20 + headExtend, -5, 15, 0, Math.PI * 2);
             ctx.fill();
             
             // Wattle (red thing under beak)
             ctx.fillStyle = '#FF0000';
             ctx.beginPath();
-            ctx.ellipse(28, 5, 5, 10, 0.3, 0, Math.PI * 2);
+            ctx.ellipse(28 + headExtend, 5, 5, 10, 0.3, 0, Math.PI * 2);
             ctx.fill();
             
             // Snood (red thing on top)
             ctx.fillStyle = '#FF0000';
             ctx.beginPath();
-            ctx.ellipse(25, -15, 4, 8, -0.5, 0, Math.PI * 2);
+            ctx.ellipse(25 + headExtend, -15, 4, 8, -0.5, 0, Math.PI * 2);
             ctx.fill();
             
-            // BIG MOUTH / Beak
-            ctx.fillStyle = '#FFA500';
+            // BIG MOUTH / Beak - extra extended during peck
+            const beakExtend = isPecking ? 25 : 0;
+            ctx.fillStyle = isPecking ? '#FF6600' : '#FFA500'; // Brighter orange when pecking
             ctx.beginPath();
-            const mouthOpenAmount = turkey.mouthOpen * 15;
+            const mouthOpenAmount = isPecking ? 8 : turkey.mouthOpen * 15; // Closed beak during peck for sharp hit
             // Upper beak
-            ctx.moveTo(30, -8);
-            ctx.lineTo(55, -5 - mouthOpenAmount);
-            ctx.lineTo(30, -2);
+            ctx.moveTo(30 + headExtend, -8);
+            ctx.lineTo(55 + headExtend + beakExtend, -5 - mouthOpenAmount);
+            ctx.lineTo(30 + headExtend, -2);
             ctx.fill();
             // Lower beak
             ctx.beginPath();
-            ctx.moveTo(30, -2);
-            ctx.lineTo(55, 5 + mouthOpenAmount);
-            ctx.lineTo(30, 2);
+            ctx.moveTo(30 + headExtend, -2);
+            ctx.lineTo(55 + headExtend + beakExtend, 5 + mouthOpenAmount);
+            ctx.lineTo(30 + headExtend, 2);
             ctx.fill();
             
-            // Eye
+            // Peck impact effect
+            if (isPecking && peckAnimTimer > 10) {
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 3;
+                // Impact lines
+                for (let i = 0; i < 4; i++) {
+                    const angle = (i - 1.5) * 0.4;
+                    ctx.beginPath();
+                    ctx.moveTo(60 + headExtend + beakExtend, -2);
+                    ctx.lineTo(75 + headExtend + beakExtend + Math.cos(angle) * 15, -2 + Math.sin(angle) * 15);
+                    ctx.stroke();
+                }
+            }
+            
+            // Eye - angry during peck
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(25, -8, 5, 0, Math.PI * 2);
+            ctx.arc(25 + headExtend, -8, 5, 0, Math.PI * 2);
             ctx.fill();
             ctx.fillStyle = '#FFF';
             ctx.beginPath();
-            ctx.arc(26, -9, 2, 0, Math.PI * 2);
+            ctx.arc(26 + headExtend, -9, 2, 0, Math.PI * 2);
             ctx.fill();
+            
+            // Angry eyebrow during peck
+            if (isPecking) {
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(20 + headExtend, -15);
+                ctx.lineTo(30 + headExtend, -13);
+                ctx.stroke();
+            }
             
             // Legs
             ctx.strokeStyle = '#FFA500';
@@ -1172,6 +1280,44 @@
             ctx.beginPath();
             ctx.ellipse(6, -apple.size / 2 - 5, 6, 3, 0.5, 0, Math.PI * 2);
             ctx.fill();
+            
+            ctx.restore();
+        }
+
+        function drawPeckIndicator() {
+            if (gameState !== 'boss' || !boss) return;
+            
+            const distToBoss = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
+            const inRange = distToBoss < PECK_RANGE + boss.width / 2;
+            
+            // Draw range circle around turkey
+            ctx.save();
+            ctx.translate(turkey.x, turkey.y);
+            
+            // Range indicator
+            ctx.strokeStyle = inRange ? 'rgba(255, 215, 0, 0.6)' : 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = inRange ? 3 : 1;
+            ctx.setLineDash([8, 8]);
+            ctx.beginPath();
+            ctx.arc(0, 0, PECK_RANGE, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Cooldown indicator (arc that fills up as cooldown resets)
+            if (peckCooldown > 0) {
+                const cooldownPercent = peckCooldown / PECK_COOLDOWN_MAX;
+                ctx.strokeStyle = 'rgba(255, 100, 100, 0.7)';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(0, 0, 35, -Math.PI / 2, -Math.PI / 2 + (1 - cooldownPercent) * Math.PI * 2);
+                ctx.stroke();
+            } else if (inRange) {
+                // Ready to peck indicator
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
+                ctx.font = 'bold 14px Fraunces';
+                ctx.textAlign = 'center';
+                ctx.fillText('PECK!', 0, -45);
+            }
             
             ctx.restore();
         }
@@ -1338,6 +1484,7 @@
             if (gameState === 'playing' || gameState === 'boss') {
                 apples.forEach(drawApple);
                 drawProjectiles();
+                drawPeckIndicator(); // Draw peck range indicator behind turkey
                 drawTurkey();
                 if (boss) drawBoss();
                 if (hunter) drawHunter();
