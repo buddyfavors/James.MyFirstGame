@@ -770,14 +770,14 @@
                 spawnApple();
             }
 
-            // Spawn hunter for level 3
+            // Spawn hunter for level 3 - stays in the center
             if (currentLevel === 3) {
                 hunter = {
-                    x: 500,
-                    y: 700,
+                    x: BASE_WIDTH / 2,
+                    y: BASE_HEIGHT / 2,
                     width: 50,
                     height: 70,
-                    speed: 2,
+                    speed: 0, // Hunter doesn't move
                     shootTimer: 0
                 };
             }
@@ -797,7 +797,9 @@
                 direction: 1,
                 attackTimer: 0,
                 opacity: 1, // Boss starts fully visible
-                shotsThrown: 0 // Track how many projectiles thrown
+                shotsThrown: 0, // Track how many projectiles thrown
+                missingSlices: [], // Track which slice angles are missing
+                currentScale: 1 // Visual scale that shrinks as pieces are thrown
             };
             apples = [];
             for (let i = 0; i < 3; i++) {
@@ -937,22 +939,33 @@
                 boss.attackTimer++;
                 if (boss.attackTimer > 60) {
                     boss.attackTimer = 0;
-                    // Shoot projectile downward toward turkey
+                    
+                    // Calculate slice angle that will be "thrown off"
+                    const sliceAngle = (boss.shotsThrown % 8) * (Math.PI / 4); // 8 slices around the pie
+                    boss.missingSlices.push(sliceAngle);
+                    
+                    // Shoot projectile from the edge where the slice came off
+                    const throwOffsetX = Math.cos(sliceAngle + Math.PI / 8) * (boss.width / 2 * boss.currentScale);
+                    const throwOffsetY = Math.sin(sliceAngle + Math.PI / 8) * (boss.height / 2 * boss.currentScale);
+                    
                     bossProjectiles.push({
-                        x: boss.x,
-                        y: boss.y + boss.height / 2,
-                        vx: (Math.random() - 0.5) * 4,
+                        x: boss.x + throwOffsetX,
+                        y: boss.y + throwOffsetY,
+                        vx: (Math.random() - 0.5) * 4 + throwOffsetX * 0.05,
                         vy: 6,
                         size: 20
                     });
                     
-                    // Boss loses health and fades when throwing pies!
+                    // Boss loses health and shrinks when throwing pies!
                     boss.shotsThrown++;
                     boss.health -= 0.3; // Lose a small amount of health per shot
-                    boss.opacity = Math.max(0.2, 1 - (boss.shotsThrown * 0.04)); // Fade slowly, minimum 20% visible
+                    boss.currentScale = Math.max(0.4, 1 - (boss.shotsThrown * 0.06)); // Shrink as pieces are thrown
+                    boss.opacity = Math.max(0.3, 1 - (boss.shotsThrown * 0.03)); // Fade slowly too
                     
-                    // Small visual feedback - boss flickers when shooting
-                    spawnParticles(boss.x, boss.y + boss.height / 2, '#FF7518', 5);
+                    // Visual feedback - chunks coming off from where the slice was
+                    spawnParticles(boss.x + throwOffsetX, boss.y + throwOffsetY, '#FF7518', 10);
+                    spawnParticles(boss.x + throwOffsetX, boss.y + throwOffsetY, '#DEB887', 6); // Crust pieces
+                    spawnParticles(boss.x + throwOffsetX, boss.y + throwOffsetY, '#FFFAF0', 4); // Whipped cream
                     
                     // Check if boss defeated itself by throwing too many pies
                     if (boss.health <= 0) {
@@ -1004,16 +1017,9 @@
                 }
             }
 
-            // Update hunter (level 3)
+            // Update hunter (level 3) - Hunter stays in center but still shoots
             if (hunter && gameState === 'playing') {
-                // Hunter follows turkey
-                const hdx = turkey.x - hunter.x;
-                const hdy = turkey.y - hunter.y;
-                const hdist = Math.hypot(hdx, hdy);
-                if (hdist > 150) {
-                    hunter.x += (hdx / hdist) * hunter.speed;
-                    hunter.y += (hdy / hdist) * hunter.speed;
-                }
+                // Hunter stays in place - no movement code
 
                 hunter.shootTimer++;
                 if (hunter.shootTimer > 90) {
@@ -1389,44 +1395,82 @@
             // Apply fading opacity - boss fades as it throws more pies
             ctx.globalAlpha = boss.opacity;
             
-            // Pie dish
+            // Apply shrinking scale
+            const scale = boss.currentScale;
+            ctx.scale(scale, scale);
+            
+            // Pie dish (also shrinks)
             ctx.fillStyle = '#CD853F';
             ctx.beginPath();
             ctx.ellipse(0, boss.height / 2 - 10, boss.width / 2 + 10, 15, 0, 0, Math.PI * 2);
             ctx.fill();
             
-            // Pie filling
-            ctx.fillStyle = '#FF7518';
-            ctx.beginPath();
-            ctx.arc(0, 0, boss.width / 2, 0, Math.PI * 2);
-            ctx.fill();
+            // Draw pie with missing slices
+            const sliceCount = 8;
+            const sliceAngle = Math.PI * 2 / sliceCount;
             
-            // Crust edge
-            ctx.strokeStyle = '#DEB887';
-            ctx.lineWidth = 8;
-            ctx.beginPath();
-            ctx.arc(0, 0, boss.width / 2 - 2, 0, Math.PI * 2);
-            ctx.stroke();
+            for (let i = 0; i < sliceCount; i++) {
+                const startAngle = i * sliceAngle;
+                const endAngle = startAngle + sliceAngle - 0.05; // Small gap between slices
+                
+                // Check if this slice is missing
+                const isMissing = boss.missingSlices.some(missAngle => {
+                    return Math.abs(missAngle - startAngle) < 0.1;
+                });
+                
+                if (!isMissing) {
+                    // Draw pie filling slice
+                    ctx.fillStyle = '#FF7518';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.arc(0, 0, boss.width / 2, startAngle, endAngle);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Draw crust edge on this slice
+                    ctx.strokeStyle = '#DEB887';
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, boss.width / 2 - 2, startAngle, endAngle);
+                    ctx.stroke();
+                } else {
+                    // Draw empty/bitten area where slice was
+                    ctx.fillStyle = 'rgba(139, 90, 43, 0.3)'; // Dark inner pie color
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.arc(0, 0, boss.width / 2 - 15, startAngle, endAngle);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
             
-            // Whipped cream swirls
+            // Whipped cream swirls (only on remaining slices)
             ctx.fillStyle = '#FFFAF0';
             for (let i = 0; i < 6; i++) {
                 const angle = (i / 6) * Math.PI * 2;
-                ctx.beginPath();
-                ctx.arc(
-                    Math.cos(angle) * 25,
-                    Math.sin(angle) * 25,
-                    12, 0, Math.PI * 2
-                );
-                ctx.fill();
+                const sliceIndex = Math.floor(angle / sliceAngle);
+                const isMissing = boss.missingSlices.some(missAngle => {
+                    return Math.abs(missAngle - sliceIndex * sliceAngle) < 0.1;
+                });
+                
+                if (!isMissing) {
+                    ctx.beginPath();
+                    ctx.arc(
+                        Math.cos(angle) * 25,
+                        Math.sin(angle) * 25,
+                        10, 0, Math.PI * 2
+                    );
+                    ctx.fill();
+                }
             }
             
-            // Center cream dollop
+            // Center cream dollop (gets smaller as more slices are gone)
+            const centerSize = Math.max(5, 15 - boss.missingSlices.length);
             ctx.beginPath();
-            ctx.arc(0, 0, 15, 0, Math.PI * 2);
+            ctx.arc(0, 0, centerSize, 0, Math.PI * 2);
             ctx.fill();
             
-            // Evil face
+            // Evil face (shrinks with the pie)
             ctx.fillStyle = '#000';
             // Eyes
             ctx.beginPath();
@@ -1434,27 +1478,36 @@
             ctx.arc(15, -5, 6, 0, Math.PI * 2);
             ctx.fill();
             
-            // Evil eyebrows
+            // Evil eyebrows - get more distressed as health drops
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(-25, -15);
+            const eyebrowLift = boss.missingSlices.length * 2;
+            ctx.moveTo(-25, -15 - eyebrowLift);
             ctx.lineTo(-8, -12);
-            ctx.moveTo(25, -15);
+            ctx.moveTo(25, -15 - eyebrowLift);
             ctx.lineTo(8, -12);
             ctx.stroke();
             
-            // Evil smile
+            // Evil smile (becomes worried frown as health drops)
             ctx.beginPath();
-            ctx.arc(0, 10, 15, 0.2, Math.PI - 0.2);
+            if (boss.missingSlices.length > 4) {
+                // Worried frown
+                ctx.arc(0, 20, 12, Math.PI + 0.3, -0.3);
+            } else {
+                // Evil smile
+                ctx.arc(0, 10, 15, 0.2, Math.PI - 0.2);
+            }
             ctx.stroke();
+            
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform for health bar
             
             // Health bar - always fully visible even when boss is fading
             ctx.globalAlpha = 1;
             ctx.fillStyle = '#333';
-            ctx.fillRect(-40, -boss.height / 2 - 20, 80, 10);
+            ctx.fillRect(boss.x - 40, boss.y - boss.height / 2 - 20, 80, 10);
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(-38, -boss.height / 2 - 18, 76 * Math.max(0, boss.health / boss.maxHealth), 6);
+            ctx.fillRect(boss.x - 38, boss.y - boss.height / 2 - 18, 76 * Math.max(0, boss.health / boss.maxHealth), 6);
             
             ctx.restore();
         }
