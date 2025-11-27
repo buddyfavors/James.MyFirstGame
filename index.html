@@ -167,8 +167,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: safe center;
             z-index: 100;
+            overflow-y: auto;
+            padding: 20px 10px;
+            -webkit-overflow-scrolling: touch;
         }
 
         .hidden {
@@ -376,6 +379,47 @@
                 font-size: 16px;
                 padding: 10px 30px;
             }
+        }
+
+        /* Extra small height screens (small phones in landscape or very compact screens) */
+        @media (max-height: 400px) {
+            .start-screen, .game-over-screen, .level-up-screen, .boss-screen, .win-screen {
+                justify-content: flex-start;
+                padding-top: 10px;
+            }
+
+            h1 {
+                font-size: 24px;
+                margin-bottom: 5px;
+            }
+
+            .subtitle {
+                font-size: 12px;
+                margin-bottom: 8px;
+            }
+
+            .instructions {
+                font-size: 11px;
+                margin-bottom: 10px;
+                line-height: 1.3;
+            }
+
+            .turkey-emoji {
+                font-size: 30px;
+            }
+
+            .btn {
+                font-size: 14px;
+                padding: 8px 25px;
+                margin-bottom: 10px;
+            }
+        }
+
+        /* Ensure button is always tappable and visible */
+        .btn {
+            min-height: 44px;
+            min-width: 120px;
+            flex-shrink: 0;
         }
 
         /* Show/hide controls based on device */
