@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turkey Evolution VR - Thanksgiving Game</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700;900&family=Caveat:wght@700&display=swap');
+
+        :root {
+            --autumn-orange: #D2691E;
+            --harvest-gold: #DAA520;
+            --pumpkin: #FF7518;
+            --cranberry: #9F1D35;
+            --turkey-brown: #8B4513;
+            --sage-green: #9DC183;
+            --cream: #FFFDD0;
+            --bark: #3D2914;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Fraunces', serif;
+            overflow: hidden;
+        }
+
+        .hud {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .hud-item {
+            background: linear-gradient(135deg, rgba(61, 41, 20, 0.95), rgba(139, 69, 19, 0.9));
+            padding: 12px 24px;
+            border-radius: 30px;
+            border: 3px solid var(--harvest-gold);
+            color: var(--cream);
+            font-size: 18px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .hud-item.level {
+            font-family: 'Caveat', cursive;
+            font-size: 24px;
+            background: linear-gradient(135deg, var(--cranberry), var(--turkey-brown));
+        }
+
+        .xp-container {
+            width: 200px;
+            height: 25px;
+            background: var(--bark);
+            border-radius: 15px;
+            border: 3px solid var(--harvest-gold);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .xp-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--sage-green), var(--pumpkin), var(--cranberry));
+            border-radius: 12px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px var(--pumpkin);
+        }
+
+        .xp-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            color: var(--cream);
+            text-shadow: 1px 1px 2px var(--bark);
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(29, 15, 5, 0.95);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--cream);
+            text-align: center;
+            padding: 20px;
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        .overlay h1 {
+            font-family: 'Caveat', cursive;
+            font-size: 64px;
+            color: var(--pumpkin);
+            text-shadow: 4px 4px 0 var(--cranberry), 8px 8px 0 var(--bark);
+            margin-bottom: 20px;
+            animation: wobble 2s ease-in-out infinite;
+        }
+
+        @keyframes wobble {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2deg); }
+        }
+
+        .overlay .subtitle {
+            font-size: 28px;
+            color: var(--harvest-gold);
+            margin-bottom: 30px;
+        }
+
+        .overlay .instructions {
+            font-size: 18px;
+            max-width: 500px;
+            line-height: 1.8;
+            margin-bottom: 30px;
+        }
+
+        .overlay .emoji {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 0.5s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .btn {
+            font-family: 'Fraunces', serif;
+            font-size: 24px;
+            font-weight: 700;
+            padding: 18px 50px;
+            background: linear-gradient(135deg, var(--pumpkin), var(--autumn-orange));
+            color: var(--cream);
+            border: 4px solid var(--harvest-gold);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-shadow: 2px 2px 0 var(--bark);
+            box-shadow: 0 6px 0 var(--bark), 0 10px 20px rgba(0,0,0,0.3);
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 9px 0 var(--bark), 0 15px 30px rgba(0,0,0,0.4);
+        }
+
+        .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 3px 0 var(--bark), 0 5px 10px rgba(0,0,0,0.3);
+        }
+
+        .btn.vr {
+            background: linear-gradient(135deg, #6B5B95, #9B59B6);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .level-name {
+            font-family: 'Caveat', cursive;
+            font-size: 48px;
+            color: var(--sage-green);
+            text-shadow: 3px 3px 0 var(--bark);
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .boss-name {
+            color: var(--cranberry);
+        }
+
+        .controls-info {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(61, 41, 20, 0.9);
+            padding: 10px 25px;
+            border-radius: 20px;
+            border: 2px solid var(--harvest-gold);
+            color: var(--cream);
+            font-size: 14px;
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        .vr-indicator {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, #6B5B95, #9B59B6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 2px solid var(--harvest-gold);
+            color: white;
+            font-size: 14px;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <!-- HUD -->
+    <div class="hud" id="hud" style="display: none;">
+        <div class="hud-item level" id="levelDisplay">Level 1: Barn</div>
+        <div class="hud-item">🍎 <span id="scoreDisplay">0</span></div>
+        <div class="xp-container">
+            <div class="xp-bar" id="xpBar" style="width: 0%"></div>
+            <div class="xp-text" id="xpText">0 / 10 XP</div>
+        </div>
+    </div>
+
+    <div class="controls-info" id="controlsInfo" style="display: none;">
+        🎮 <strong>WASD/Arrows</strong>: Move | <strong>Mouse</strong>: Look | <strong>Space</strong>: Peck | 🥽 VR Controllers supported
+    </div>
+
+    <div class="vr-indicator" id="vrIndicator" style="display: none;">
+        🥽 VR Mode
+    </div>
+
+    <!-- Start Screen -->
+    <div class="overlay" id="startScreen">
+        <div class="emoji">🦃</div>
+        <h1>Turkey Evolution VR</h1>
+        <p class="subtitle">A Thanksgiving Adventure in Virtual Reality</p>
+        <div class="instructions">
+            You're a hungry turkey with a BIG appetite!<br><br>
+            🍎 Collect floating apples to gain XP<br>
+            🥧 Defeat the Pumpkin Pie boss<br>
+            🏃 Survive the hunter in the final level!<br><br>
+            <strong>Desktop:</strong> WASD to move, Mouse to look, Space to peck<br>
+            <strong>VR:</strong> Look to aim, Trigger/Grip to move, A/X to peck
+        </div>
+        <div class="btn-group">
+            <button class="btn" onclick="startGame(false)">🎮 Play Desktop</button>
+            <button class="btn vr" onclick="startGame(true)">🥽 Enter VR</button>
+        </div>
+        <a href="index.html" style="display: block; margin-top: 20px; color: #DAA520; font-size: 16px; text-decoration: none; opacity: 0.9;">🦃 Play Classic 2D Version</a>
+    </div>
+
+    <!-- Level Up Screen -->
+    <div class="overlay hidden" id="levelUpScreen">
+        <div class="emoji">🦃</div>
+        <h1>Level Up!</h1>
+        <p class="level-name" id="newLevelName">Turkey Run</p>
+        <p class="instructions" id="levelDescription">You've escaped the barn! Now run through the fields!</p>
+        <button class="btn" onclick="continueGame()">Continue</button>
+    </div>
+
+    <!-- Boss Screen -->
+    <div class="overlay hidden" id="bossScreen">
+        <div class="emoji">🥧</div>
+        <h1>Boss Fight!</h1>
+        <p class="level-name boss-name">Pumpkin Pie</p>
+        <p class="instructions">
+            The dreaded Pumpkin Pie appears!<br>
+            🍎 Eat apples to damage it<br>
+            👊 Get close and peck it!<br>
+            🦃 Or just <strong>EAT THE BOSS</strong> directly!
+        </p>
+        <button class="btn" onclick="startBossFight()">Fight!</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div class="overlay hidden" id="gameOverScreen">
+        <div class="emoji">💀</div>
+        <h1>Game Over!</h1>
+        <p class="subtitle" id="deathMessage">The turkey has been caught!</p>
+        <p class="instructions">Final Score: <span id="finalScore">0</span> apples</p>
+        <button class="btn" onclick="restartGame()">Try Again</button>
+    </div>
+
+    <!-- Win Screen -->
+    <div class="overlay hidden" id="winScreen">
+        <div class="emoji">🏆</div>
+        <h1>Victory!</h1>
+        <p class="level-name">The Turkey Survives Thanksgiving!</p>
+        <p class="instructions">
+            You've evolved from a barn turkey to a legendary survivor!<br><br>
+            Final Score: <span id="winScore">0</span> apples
+        </p>
+        <button class="btn" onclick="restartGame()">Play Again</button>
+    </div>
+
+    <!-- A-Frame VR Scene -->
+    <a-scene 
+        id="scene"
+        vr-mode-ui="enabled: true"
+        embedded
+        renderer="antialias: true; colorManagement: true"
+        loading-screen="dotsColor: #FF7518; backgroundColor: #3D2914">
+        
+        <!-- Assets -->
+        <a-assets>
+            <a-mixin id="apple-mixin" 
+                geometry="primitive: sphere; radius: 0.3"
+                material="color: #FF0000; metalness: 0.3; roughness: 0.6"
+                animation="property: position; dir: alternate; dur: 2000; easing: easeInOutSine; loop: true; to: 0 0.3 0"
+                animation__rotate="property: rotation; dur: 3000; easing: linear; loop: true; to: 0 360 0">
+            </a-mixin>
+        </a-assets>
+
+        <!-- Sky/Environment changes per level -->
+        <a-sky id="sky" color="#87CEEB"></a-sky>
+        
+        <!-- Ground -->
+        <a-plane id="ground" 
+            rotation="-90 0 0" 
+            width="100" 
+            height="100" 
+            color="#228B22"
+            material="roughness: 0.9">
+        </a-plane>
+
+        <!-- Barn Environment (Level 1) -->
+        <a-entity id="barnEnvironment">
+            <!-- Barn walls -->
+            <a-box position="0 5 -15" width="30" height="10" depth="0.5" color="#8B4513"></a-box>
+            <a-box position="-15 5 0" width="0.5" height="10" depth="30" color="#8B4513"></a-box>
+            <a-box position="15 5 0" width="0.5" height="10" depth="30" color="#8B4513"></a-box>
+            <!-- Hay bales -->
+            <a-cylinder position="-10 0.5 -10" radius="1" height="1" color="#DAA520" rotation="90 0 0"></a-cylinder>
+            <a-cylinder position="10 0.5 -8" radius="1" height="1" color="#DAA520" rotation="90 45 0"></a-cylinder>
+            <a-cylinder position="-8 0.5 5" radius="1" height="1" color="#DAA520" rotation="90 -30 0"></a-cylinder>
+        </a-entity>
+
+        <!-- Field Environment (Level 2) - Hidden initially -->
+        <a-entity id="fieldEnvironment" visible="false">
+            <!-- Autumn trees -->
+            <a-entity position="-12 0 -15">
+                <a-cylinder radius="0.5" height="4" color="#5D3A1A" position="0 2 0"></a-cylinder>
+                <a-sphere radius="3" color="#FF6347" position="0 5 0"></a-sphere>
+            </a-entity>
+            <a-entity position="12 0 -12">
+                <a-cylinder radius="0.5" height="4" color="#5D3A1A" position="0 2 0"></a-cylinder>
+                <a-sphere radius="3" color="#FF8C00" position="0 5 0"></a-sphere>
+            </a-entity>
+            <a-entity position="-8 0 10">
+                <a-cylinder radius="0.5" height="4" color="#5D3A1A" position="0 2 0"></a-cylinder>
+                <a-sphere radius="3" color="#FFD700" position="0 5 0"></a-sphere>
+            </a-entity>
+            <a-entity position="10 0 8">
+                <a-cylinder radius="0.5" height="4" color="#5D3A1A" position="0 2 0"></a-cylinder>
+                <a-sphere radius="3" color="#DC143C" position="0 5 0"></a-sphere>
+            </a-entity>
+            <!-- Pumpkins -->
+            <a-sphere position="-5 0.4 -5" radius="0.5" color="#FF7518"></a-sphere>
+            <a-sphere position="6 0.4 3" radius="0.4" color="#FF7518"></a-sphere>
+            <a-sphere position="-3 0.4 8" radius="0.45" color="#FF7518"></a-sphere>
+        </a-entity>
+
+        <!-- Forest Environment (Level 3) - Hidden initially -->
+        <a-entity id="forestEnvironment" visible="false">
+            <!-- Dark pine trees -->
+            <a-entity position="-10 0 -12">
+                <a-cone radius-bottom="3" radius-top="0" height="8" color="#1a3a1a" position="0 6 0"></a-cone>
+                <a-cylinder radius="0.4" height="4" color="#3D2914" position="0 2 0"></a-cylinder>
+            </a-entity>
+            <a-entity position="10 0 -10">
+                <a-cone radius-bottom="3" radius-top="0" height="8" color="#1a3a1a" position="0 6 0"></a-cone>
+                <a-cylinder radius="0.4" height="4" color="#3D2914" position="0 2 0"></a-cylinder>
+            </a-entity>
+            <a-entity position="-8 0 8">
+                <a-cone radius-bottom="2.5" radius-top="0" height="7" color="#1a3a1a" position="0 5.5 0"></a-cone>
+                <a-cylinder radius="0.35" height="3.5" color="#3D2914" position="0 1.75 0"></a-cylinder>
+            </a-entity>
+            <a-entity position="12 0 6">
+                <a-cone radius-bottom="2.5" radius-top="0" height="7" color="#1a3a1a" position="0 5.5 0"></a-cone>
+                <a-cylinder radius="0.35" height="3.5" color="#3D2914" position="0 1.75 0"></a-cylinder>
+            </a-entity>
+            <!-- Moon -->
+            <a-sphere position="20 25 -30" radius="3" color="#FFFACD" material="emissive: #FFFACD; emissiveIntensity: 0.5"></a-sphere>
+            <!-- Cover rocks -->
+            <a-box position="-6 0.5 -6" width="2" height="1" depth="2" color="#696969" class="barrier"></a-box>
+            <a-box position="6 0.5 6" width="2" height="1" depth="2" color="#696969" class="barrier"></a-box>
+            <a-box position="-5 0.5 5" width="2" height="1" depth="2" color="#696969" class="barrier"></a-box>
+            <a-box position="5 0.5 -5" width="2" height="1" depth="2" color="#696969" class="barrier"></a-box>
+        </a-entity>
+
+        <!-- Apples Container -->
+        <a-entity id="apples"></a-entity>
+
+        <!-- Projectiles Container -->
+        <a-entity id="projectiles"></a-entity>
+
+        <!-- Boss (Pumpkin Pie) - Hidden initially -->
+        <a-entity id="boss" visible="false" position="0 1.5 -8">
+            <!-- Pie dish -->
+            <a-cylinder radius="1.2" height="0.2" color="#CD853F" position="0 -0.3 0"></a-cylinder>
+            <!-- Pie filling -->
+            <a-cylinder id="pieFilling" radius="1" height="0.4" color="#FF7518" position="0 0 0"></a-cylinder>
+            <!-- Whipped cream swirls -->
+            <a-sphere radius="0.2" color="#FFFAF0" position="0.6 0.3 0"></a-sphere>
+            <a-sphere radius="0.2" color="#FFFAF0" position="-0.6 0.3 0"></a-sphere>
+            <a-sphere radius="0.2" color="#FFFAF0" position="0 0.3 0.6"></a-sphere>
+            <a-sphere radius="0.2" color="#FFFAF0" position="0 0.3 -0.6"></a-sphere>
+            <a-sphere radius="0.25" color="#FFFAF0" position="0 0.4 0"></a-sphere>
+            <!-- Evil face -->
+            <a-sphere radius="0.12" color="#000" position="-0.3 0.35 0.5"></a-sphere>
+            <a-sphere radius="0.12" color="#000" position="0.3 0.35 0.5"></a-sphere>
+            <!-- Health bar -->
+            <a-plane id="bossHealthBg" position="0 1.2 0" width="2" height="0.2" color="#333" look-at="[camera]"></a-plane>
+            <a-plane id="bossHealthBar" position="0 1.2 0.01" width="1.9" height="0.15" color="#FF0000" look-at="[camera]"></a-plane>
+        </a-entity>
+
+        <!-- Hunter - Hidden initially -->
+        <a-entity id="hunter" visible="false" position="0 0 0">
+            <!-- Body -->
+            <a-box width="0.6" height="0.8" depth="0.4" color="#556B2F" position="0 1.2 0"></a-box>
+            <!-- Head -->
+            <a-sphere radius="0.25" color="#DEB887" position="0 1.85 0"></a-sphere>
+            <!-- Hat -->
+            <a-cylinder radius="0.35" height="0.15" color="#FF4500" position="0 2.1 0"></a-cylinder>
+            <a-cylinder radius="0.25" height="0.2" color="#FF4500" position="0 2.25 0"></a-cylinder>
+            <!-- Gun -->
+            <a-box width="0.6" height="0.1" depth="0.1" color="#333" position="-0.5 1.3 0"></a-box>
+            <!-- Legs -->
+            <a-box width="0.2" height="0.5" depth="0.2" color="#8B4513" position="-0.15 0.45 0"></a-box>
+            <a-box width="0.2" height="0.5" depth="0.2" color="#8B4513" position="0.15 0.45 0"></a-box>
+            <!-- Status indicator -->
+            <a-text id="hunterStatus" value="💤 Waking up..." position="0 2.8 0" align="center" color="#FFFF00" look-at="[camera]"></a-text>
+        </a-entity>
+
+        <!-- Turkey Body (attached to camera rig) -->
+        <a-entity id="turkeyBody" position="0 0 0">
+            <!-- Tail feathers (visible from behind) -->
+            <a-cone radius-bottom="0.5" radius-top="0" height="0.8" color="#8B0000" position="0 0.4 0.4" rotation="-30 0 0"></a-cone>
+            <a-cone radius-bottom="0.4" radius-top="0" height="0.7" color="#FF4500" position="-0.3 0.5 0.35" rotation="-30 -20 0"></a-cone>
+            <a-cone radius-bottom="0.4" radius-top="0" height="0.7" color="#FFD700" position="0.3 0.5 0.35" rotation="-30 20 0"></a-cone>
+        </a-entity>
+
+        <!-- Camera Rig (Player/Turkey) -->
+        <a-entity id="cameraRig" position="0 1 0" movement-controls="fly: false; speed: 0.2">
+            <a-entity id="camera" 
+                camera 
+                look-controls="pointerLockEnabled: true"
+                wasd-controls="enabled: false"
+                position="0 0.6 0">
+                <!-- Beak visible in VR -->
+                <a-cone id="beak" 
+                    radius-bottom="0.15" 
+                    radius-top="0.02" 
+                    height="0.4" 
+                    color="#FFA500" 
+                    position="0 -0.15 -0.4" 
+                    rotation="-90 0 0"
+                    visible="true">
+                </a-cone>
+            </a-entity>
+            
+            <!-- Left hand controller -->
+            <a-entity id="leftHand" 
+                laser-controls="hand: left" 
+                raycaster="objects: .interactive; far: 20"
+                visible="false">
+            </a-entity>
+            
+            <!-- Right hand controller -->
+            <a-entity id="rightHand" 
+                laser-controls="hand: right" 
+                raycaster="objects: .interactive; far: 20"
+                visible="false">
+            </a-entity>
+        </a-entity>
+
+        <!-- Lighting -->
+        <a-light type="ambient" color="#FFF" intensity="0.5"></a-light>
+        <a-light id="sunLight" type="directional" color="#FDB347" intensity="0.8" position="5 10 5"></a-light>
+    </a-scene>
+
+    <script>
+        // Game State
+        let gameState = 'start';
+        let currentLevel = 1;
+        let score = 0;
+        let xp = 0;
+        let xpNeeded = 10;
+        let isVRMode = false;
+
+        // Entity references
+        let cameraRig, camera, boss, hunter, apples, projectiles;
+        let sky, ground, barnEnv, fieldEnv, forestEnv, sunLight;
+        let beak, turkeyBody;
+
+        // Game settings
+        const levels = {
+            1: { name: 'Barn Turkey Barn', xpNeeded: 10, description: 'Eat apples in the cozy barn!' },
+            2: { name: 'Turkey Run', xpNeeded: 15, description: 'Run through the autumn fields!' },
+            3: { name: 'Hunter Hunt Down', xpNeeded: 20, description: 'Hide behind barriers to survive! The hunter is waking up...' }
+        };
+
+        // Movement state
+        const moveState = { forward: false, backward: false, left: false, right: false };
+        let playerVelocity = { x: 0, z: 0 };
+        const PLAYER_SPEED = 0.15;
+        const PLAYER_ACCEL = 0.02;
+        const PLAYER_FRICTION = 0.9;
+
+        // Peck state
+        let peckCooldown = 0;
+        const PECK_COOLDOWN_MAX = 60;
+        const PECK_RANGE = 3;
+        const PECK_DAMAGE = 1;
+
+        // Boss state
+        let bossState = {
+            health: 10,
+            maxHealth: 10,
+            direction: 1,
+            attackTimer: 0
+        };
+
+        // Hunter state
+        let hunterState = {
+            graceTimer: 180,
+            shotsFired: 0,
+            reloadTimer: 0,
+            isReloading: false,
+            shootTimer: 0
+        };
+
+        // Initialize when scene is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            const scene = document.querySelector('a-scene');
+            
+            scene.addEventListener('loaded', () => {
+                initializeReferences();
+                setupControls();
+            });
+
+            scene.addEventListener('enter-vr', () => {
+                isVRMode = true;
+                document.getElementById('vrIndicator').style.display = 'block';
+                document.getElementById('leftHand').setAttribute('visible', 'true');
+                document.getElementById('rightHand').setAttribute('visible', 'true');
+                beak.setAttribute('visible', 'true');
+            });
+
+            scene.addEventListener('exit-vr', () => {
+                isVRMode = false;
+                document.getElementById('vrIndicator').style.display = 'none';
+                document.getElementById('leftHand').setAttribute('visible', 'false');
+                document.getElementById('rightHand').setAttribute('visible', 'false');
+            });
+        });
+
+        function initializeReferences() {
+            cameraRig = document.getElementById('cameraRig');
+            camera = document.getElementById('camera');
+            boss = document.getElementById('boss');
+            hunter = document.getElementById('hunter');
+            apples = document.getElementById('apples');
+            projectiles = document.getElementById('projectiles');
+            sky = document.getElementById('sky');
+            ground = document.getElementById('ground');
+            barnEnv = document.getElementById('barnEnvironment');
+            fieldEnv = document.getElementById('fieldEnvironment');
+            forestEnv = document.getElementById('forestEnvironment');
+            sunLight = document.getElementById('sunLight');
+            beak = document.getElementById('beak');
+            turkeyBody = document.getElementById('turkeyBody');
+        }
+
+        function setupControls() {
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (gameState !== 'playing' && gameState !== 'boss') return;
+                
+                switch(e.key.toLowerCase()) {
+                    case 'w': case 'arrowup': moveState.forward = true; break;
+                    case 's': case 'arrowdown': moveState.backward = true; break;
+                    case 'a': case 'arrowleft': moveState.left = true; break;
+                    case 'd': case 'arrowright': moveState.right = true; break;
+                    case ' ':
+                        e.preventDefault();
+                        tryPeckAttack();
+                        break;
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                switch(e.key.toLowerCase()) {
+                    case 'w': case 'arrowup': moveState.forward = false; break;
+                    case 's': case 'arrowdown': moveState.backward = false; break;
+                    case 'a': case 'arrowleft': moveState.left = false; break;
+                    case 'd': case 'arrowright': moveState.right = false; break;
+                }
+            });
+
+            // VR Controller events
+            const leftHand = document.getElementById('leftHand');
+            const rightHand = document.getElementById('rightHand');
+
+            if (leftHand) {
+                leftHand.addEventListener('triggerdown', () => { moveState.forward = true; });
+                leftHand.addEventListener('triggerup', () => { moveState.forward = false; });
+                leftHand.addEventListener('gripdown', () => { moveState.backward = true; });
+                leftHand.addEventListener('gripup', () => { moveState.backward = false; });
+            }
+
+            if (rightHand) {
+                rightHand.addEventListener('triggerdown', () => { moveState.forward = true; });
+                rightHand.addEventListener('triggerup', () => { moveState.forward = false; });
+                rightHand.addEventListener('abuttondown', () => tryPeckAttack());
+                rightHand.addEventListener('xbuttondown', () => tryPeckAttack());
+            }
+        }
+
+        function startGame(vrMode) {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('hud').style.display = 'flex';
+            document.getElementById('controlsInfo').style.display = 'block';
+            
+            if (vrMode) {
+                const scene = document.querySelector('a-scene');
+                scene.enterVR();
+            }
+
+            gameState = 'playing';
+            resetLevel();
+            gameLoop();
+        }
+
+        function continueGame() {
+            document.getElementById('levelUpScreen').classList.add('hidden');
+            gameState = 'playing';
+            resetLevel();
+        }
+
+        function startBossFight() {
+            document.getElementById('bossScreen').classList.add('hidden');
+            gameState = 'boss';
+            initBoss();
+        }
+
+        function restartGame() {
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('winScreen').classList.add('hidden');
+            currentLevel = 1;
+            score = 0;
+            xp = 0;
+            gameState = 'playing';
+            resetLevel();
+        }
+
+        function resetLevel() {
+            // Clear existing apples and projectiles
+            apples.innerHTML = '';
+            projectiles.innerHTML = '';
+            
+            // Reset XP
+            xp = 0;
+            xpNeeded = levels[currentLevel].xpNeeded;
+
+            // Reset player position
+            cameraRig.setAttribute('position', '0 1 5');
+
+            // Setup environment based on level
+            setupEnvironment();
+
+            // Spawn apples
+            for (let i = 0; i < 5; i++) {
+                spawnApple();
+            }
+
+            // Setup hunter for level 3
+            if (currentLevel === 3) {
+                hunter.setAttribute('visible', 'true');
+                hunter.setAttribute('position', '0 0 -5');
+                hunterState = {
+                    graceTimer: 180,
+                    shotsFired: 0,
+                    reloadTimer: 0,
+                    isReloading: false,
+                    shootTimer: 0
+                };
+            } else {
+                hunter.setAttribute('visible', 'false');
+            }
+
+            boss.setAttribute('visible', 'false');
+            updateUI();
+        }
+
+        function setupEnvironment() {
+            // Hide all environments first
+            barnEnv.setAttribute('visible', 'false');
+            fieldEnv.setAttribute('visible', 'false');
+            forestEnv.setAttribute('visible', 'false');
+
+            if (currentLevel === 1 || gameState === 'boss') {
+                if (gameState === 'boss') {
+                    // Boss fight in field
+                    sky.setAttribute('color', '#87CEEB');
+                    ground.setAttribute('color', '#228B22');
+                    fieldEnv.setAttribute('visible', 'true');
+                    sunLight.setAttribute('color', '#FDB347');
+                    sunLight.setAttribute('intensity', '0.8');
+                } else {
+                    // Barn
+                    sky.setAttribute('color', '#5D3A1A');
+                    ground.setAttribute('color', '#8B4513');
+                    barnEnv.setAttribute('visible', 'true');
+                    sunLight.setAttribute('color', '#DAA520');
+                    sunLight.setAttribute('intensity', '0.4');
+                }
+            } else if (currentLevel === 2) {
+                // Autumn field
+                sky.setAttribute('color', '#87CEEB');
+                ground.setAttribute('color', '#228B22');
+                fieldEnv.setAttribute('visible', 'true');
+                sunLight.setAttribute('color', '#FDB347');
+                sunLight.setAttribute('intensity', '0.8');
+            } else if (currentLevel === 3) {
+                // Dark forest
+                sky.setAttribute('color', '#1a1a2e');
+                ground.setAttribute('color', '#2d4a3e');
+                forestEnv.setAttribute('visible', 'true');
+                sunLight.setAttribute('color', '#4a4a6a');
+                sunLight.setAttribute('intensity', '0.3');
+            }
+        }
+
+        function initBoss() {
+            boss.setAttribute('visible', 'true');
+            boss.setAttribute('position', '0 1.5 -8');
+            bossState = {
+                health: 10,
+                maxHealth: 10,
+                direction: 1,
+                attackTimer: 0
+            };
+
+            setupEnvironment();
+            
+            // Spawn fewer apples for boss fight
+            apples.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                spawnApple();
+            }
+        }
+
+        function spawnApple() {
+            const apple = document.createElement('a-entity');
+            const x = (Math.random() - 0.5) * 20;
+            const z = (Math.random() - 0.5) * 20;
+            const y = 0.8 + Math.random() * 0.5;
+            
+            apple.setAttribute('position', `${x} ${y} ${z}`);
+            apple.setAttribute('class', 'apple interactive');
+            apple.innerHTML = `
+                <a-sphere radius="0.3" color="#FF0000" material="metalness: 0.3; roughness: 0.6">
+                    <a-animation attribute="position" dur="2000" direction="alternate" repeat="indefinite" to="0 0.2 0" easing="easeInOutSine"></a-animation>
+                </a-sphere>
+                <a-cylinder radius="0.05" height="0.15" color="#5D3A1A" position="0 0.35 0"></a-cylinder>
+                <a-sphere radius="0.08" color="#228B22" position="0.1 0.4 0" scale="1.5 0.5 1"></a-sphere>
+            `;
+            
+            apples.appendChild(apple);
+        }
+
+        function spawnProjectile(startPos, direction, isHunter = false) {
+            const proj = document.createElement('a-entity');
+            proj.setAttribute('position', startPos);
+            proj.setAttribute('class', 'projectile');
+            proj.dataset.vx = direction.x;
+            proj.dataset.vy = direction.y || 0;
+            proj.dataset.vz = direction.z;
+            proj.dataset.isHunter = isHunter;
+            
+            if (isHunter) {
+                proj.innerHTML = `<a-sphere radius="0.1" color="#333"></a-sphere>`;
+            } else {
+                proj.innerHTML = `
+                    <a-cone radius-bottom="0.3" radius-top="0" height="0.4" color="#FF7518" rotation="90 0 0">
+                        <a-cylinder radius="0.28" height="0.08" color="#DEB887" position="0 0.15 0"></a-cylinder>
+                    </a-cone>
+                `;
+            }
+            
+            projectiles.appendChild(proj);
+        }
+
+        function tryPeckAttack() {
+            if (peckCooldown > 0) return;
+            
+            // Animate beak
+            beak.setAttribute('animation', 'property: position; to: 0 -0.15 -0.7; dur: 100; dir: alternate; loop: 2');
+            
+            if (gameState === 'boss' && boss.getAttribute('visible')) {
+                const playerPos = cameraRig.getAttribute('position');
+                const bossPos = boss.getAttribute('position');
+                const dist = distance3D(playerPos, bossPos);
+                
+                if (dist < PECK_RANGE) {
+                    bossState.health -= PECK_DAMAGE;
+                    updateBossHealth();
+                    
+                    // Visual feedback
+                    createParticleEffect(bossPos, '#FF7518', 8);
+                    
+                    if (bossState.health <= 0) {
+                        createParticleEffect(bossPos, '#FFD700', 20);
+                        boss.setAttribute('visible', 'false');
+                        levelUp();
+                    }
+                    
+                    peckCooldown = PECK_COOLDOWN_MAX;
+                } else {
+                    peckCooldown = PECK_COOLDOWN_MAX / 2;
+                }
+            } else {
+                peckCooldown = PECK_COOLDOWN_MAX / 3;
+            }
+        }
+
+        function createParticleEffect(pos, color, count) {
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('a-sphere');
+                particle.setAttribute('radius', '0.1');
+                particle.setAttribute('color', color);
+                particle.setAttribute('position', `${pos.x + (Math.random()-0.5)} ${pos.y + Math.random()} ${pos.z + (Math.random()-0.5)}`);
+                particle.setAttribute('animation', 'property: position; to: ' + 
+                    `${pos.x + (Math.random()-0.5)*3} ${pos.y + Math.random()*2 + 1} ${pos.z + (Math.random()-0.5)*3}` +
+                    '; dur: 1000; easing: easeOutQuad');
+                particle.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 1000');
+                
+                document.querySelector('a-scene').appendChild(particle);
+                setTimeout(() => particle.remove(), 1000);
+            }
+        }
+
+        function distance3D(p1, p2) {
+            return Math.sqrt(
+                Math.pow(p1.x - p2.x, 2) +
+                Math.pow(p1.y - p2.y, 2) +
+                Math.pow(p1.z - p2.z, 2)
+            );
+        }
+
+        function updateUI() {
+            if (gameState === 'win' || !levels[currentLevel]) return;
+            
+            document.getElementById('levelDisplay').textContent = `Level ${currentLevel}: ${levels[currentLevel].name}`;
+            document.getElementById('scoreDisplay').textContent = score;
+            const xpPercent = (xp / xpNeeded) * 100;
+            document.getElementById('xpBar').style.width = xpPercent + '%';
+            document.getElementById('xpText').textContent = `${xp} / ${xpNeeded} XP`;
+        }
+
+        function updateBossHealth() {
+            const healthBar = document.getElementById('bossHealthBar');
+            const healthPercent = Math.max(0, bossState.health / bossState.maxHealth);
+            healthBar.setAttribute('width', 1.9 * healthPercent);
+        }
+
+        function levelUp() {
+            currentLevel++;
+            
+            if (currentLevel > 3) {
+                gameState = 'win';
+                document.getElementById('winScore').textContent = score;
+                document.getElementById('winScreen').classList.remove('hidden');
+                return;
+            }
+
+            gameState = 'levelup';
+            document.getElementById('newLevelName').textContent = levels[currentLevel].name;
+            document.getElementById('levelDescription').textContent = levels[currentLevel].description;
+            document.getElementById('levelUpScreen').classList.remove('hidden');
+        }
+
+        function gameOver(message) {
+            gameState = 'gameover';
+            document.getElementById('deathMessage').textContent = message;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        function update() {
+            if (gameState !== 'playing' && gameState !== 'boss') return;
+
+            // Update cooldowns
+            if (peckCooldown > 0) peckCooldown--;
+
+            // Player movement
+            updatePlayerMovement();
+
+            // Check apple collisions
+            checkAppleCollisions();
+
+            // Update boss
+            if (gameState === 'boss' && boss.getAttribute('visible')) {
+                updateBoss();
+            }
+
+            // Update hunter
+            if (currentLevel === 3 && hunter.getAttribute('visible')) {
+                updateHunter();
+            }
+
+            // Update projectiles
+            updateProjectiles();
+        }
+
+        function updatePlayerMovement() {
+            const cameraEl = camera;
+            const rotation = cameraEl.getAttribute('rotation');
+            const angle = THREE.MathUtils.degToRad(rotation.y);
+
+            let moveX = 0, moveZ = 0;
+
+            if (moveState.forward) {
+                moveX -= Math.sin(angle);
+                moveZ -= Math.cos(angle);
+            }
+            if (moveState.backward) {
+                moveX += Math.sin(angle);
+                moveZ += Math.cos(angle);
+            }
+            if (moveState.left) {
+                moveX -= Math.cos(angle);
+                moveZ += Math.sin(angle);
+            }
+            if (moveState.right) {
+                moveX += Math.cos(angle);
+                moveZ -= Math.sin(angle);
+            }
+
+            // Normalize diagonal movement
+            if (moveX !== 0 || moveZ !== 0) {
+                const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
+                moveX /= len;
+                moveZ /= len;
+            }
+
+            // Apply acceleration
+            playerVelocity.x += moveX * PLAYER_ACCEL;
+            playerVelocity.z += moveZ * PLAYER_ACCEL;
+
+            // Apply friction
+            playerVelocity.x *= PLAYER_FRICTION;
+            playerVelocity.z *= PLAYER_FRICTION;
+
+            // Clamp velocity
+            const speed = Math.sqrt(playerVelocity.x ** 2 + playerVelocity.z ** 2);
+            if (speed > PLAYER_SPEED) {
+                playerVelocity.x = (playerVelocity.x / speed) * PLAYER_SPEED;
+                playerVelocity.z = (playerVelocity.z / speed) * PLAYER_SPEED;
+            }
+
+            // Apply movement
+            const pos = cameraRig.getAttribute('position');
+            pos.x += playerVelocity.x;
+            pos.z += playerVelocity.z;
+
+            // Clamp position to play area
+            pos.x = Math.max(-14, Math.min(14, pos.x));
+            pos.z = Math.max(-14, Math.min(14, pos.z));
+
+            cameraRig.setAttribute('position', pos);
+
+            // Update turkey body position
+            turkeyBody.setAttribute('position', `${pos.x} 0 ${pos.z}`);
+        }
+
+        function checkAppleCollisions() {
+            const playerPos = cameraRig.getAttribute('position');
+            const appleElements = apples.querySelectorAll('.apple');
+
+            appleElements.forEach(apple => {
+                const applePos = apple.getAttribute('position');
+                const dist = distance3D(playerPos, applePos);
+
+                if (dist < 1.5) {
+                    // Eat apple!
+                    createParticleEffect(applePos, '#FF0000', 5);
+                    createParticleEffect(applePos, '#00FF00', 3);
+                    apple.remove();
+                    score++;
+
+                    if (gameState === 'boss') {
+                        bossState.health--;
+                        updateBossHealth();
+                        createParticleEffect(boss.getAttribute('position'), '#FF7518', 10);
+                        
+                        if (bossState.health <= 0) {
+                            createParticleEffect(boss.getAttribute('position'), '#FFD700', 25);
+                            boss.setAttribute('visible', 'false');
+                            levelUp();
+                        }
+                    } else {
+                        xp++;
+                        if (xp >= xpNeeded) {
+                            if (currentLevel === 1) {
+                                gameState = 'boss';
+                                document.getElementById('bossScreen').classList.remove('hidden');
+                            } else {
+                                levelUp();
+                            }
+                        }
+                    }
+
+                    // Spawn new apple
+                    setTimeout(() => {
+                        if (gameState === 'playing' || gameState === 'boss') {
+                            spawnApple();
+                        }
+                    }, 500);
+
+                    updateUI();
+                }
+            });
+        }
+
+        function updateBoss() {
+            const bossPos = boss.getAttribute('position');
+
+            // Move boss side to side
+            bossPos.x += 0.05 * bossState.direction;
+            if (bossPos.x > 8 || bossPos.x < -8) {
+                bossState.direction *= -1;
+            }
+            boss.setAttribute('position', bossPos);
+
+            // Attack timer
+            bossState.attackTimer++;
+            if (bossState.attackTimer > 90) {
+                bossState.attackTimer = 0;
+
+                // Shoot pie slice at player
+                const playerPos = cameraRig.getAttribute('position');
+                const dx = playerPos.x - bossPos.x;
+                const dz = playerPos.z - bossPos.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+
+                spawnProjectile(
+                    { x: bossPos.x, y: bossPos.y, z: bossPos.z },
+                    { x: (dx / dist) * 0.2, y: 0, z: (dz / dist) * 0.2 },
+                    false
+                );
+
+                // Boss takes damage from throwing pies
+                bossState.health -= 0.2;
+                updateBossHealth();
+
+                if (bossState.health <= 0) {
+                    createParticleEffect(bossPos, '#FFD700', 25);
+                    boss.setAttribute('visible', 'false');
+                    levelUp();
+                }
+            }
+
+            // Check if player touches boss (eating the boss!)
+            const playerPos = cameraRig.getAttribute('position');
+            const dist = distance3D(playerPos, bossPos);
+            if (dist < 2) {
+                bossState.health -= 0.1;
+                updateBossHealth();
+                createParticleEffect(bossPos, '#FF7518', 3);
+
+                if (bossState.health <= 0) {
+                    createParticleEffect(bossPos, '#FFD700', 30);
+                    boss.setAttribute('visible', 'false');
+                    score += 5;
+                    levelUp();
+                }
+            }
+        }
+
+        function updateHunter() {
+            const hunterPos = hunter.getAttribute('position');
+            const hunterStatus = document.getElementById('hunterStatus');
+
+            if (hunterState.graceTimer > 0) {
+                hunterState.graceTimer--;
+                const secondsLeft = Math.ceil(hunterState.graceTimer / 60);
+                hunterStatus.setAttribute('value', `💤 Waking in ${secondsLeft}s...`);
+            } else if (hunterState.isReloading) {
+                hunterState.reloadTimer++;
+                const secondsLeft = Math.ceil((600 - hunterState.reloadTimer) / 60);
+                hunterStatus.setAttribute('value', `🔄 Reloading ${secondsLeft}s`);
+                
+                if (hunterState.reloadTimer >= 600) {
+                    hunterState.isReloading = false;
+                    hunterState.reloadTimer = 0;
+                    hunterState.shotsFired = 0;
+                }
+            } else {
+                const shotsLeft = 3 - hunterState.shotsFired;
+                hunterStatus.setAttribute('value', `🎯 ${shotsLeft} shots`);
+                hunterStatus.setAttribute('color', '#FF6666');
+
+                hunterState.shootTimer++;
+                if (hunterState.shootTimer > 60) {
+                    hunterState.shootTimer = 0;
+
+                    // Shoot at player
+                    const playerPos = cameraRig.getAttribute('position');
+                    const dx = playerPos.x - hunterPos.x;
+                    const dy = playerPos.y - hunterPos.y;
+                    const dz = playerPos.z - hunterPos.z;
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                    spawnProjectile(
+                        { x: hunterPos.x, y: hunterPos.y + 1.3, z: hunterPos.z },
+                        { x: (dx / dist) * 0.3, y: (dy / dist) * 0.3, z: (dz / dist) * 0.3 },
+                        true
+                    );
+
+                    hunterState.shotsFired++;
+                    if (hunterState.shotsFired >= 3) {
+                        hunterState.isReloading = true;
+                    }
+                }
+            }
+        }
+
+        function updateProjectiles() {
+            const projElements = projectiles.querySelectorAll('.projectile');
+            const playerPos = cameraRig.getAttribute('position');
+
+            projElements.forEach(proj => {
+                const pos = proj.getAttribute('position');
+                const vx = parseFloat(proj.dataset.vx);
+                const vy = parseFloat(proj.dataset.vy);
+                const vz = parseFloat(proj.dataset.vz);
+
+                pos.x += vx;
+                pos.y += vy;
+                pos.z += vz;
+                proj.setAttribute('position', pos);
+
+                // Check collision with player
+                const dist = distance3D(playerPos, pos);
+                if (dist < 1) {
+                    const isHunter = proj.dataset.isHunter === 'true';
+                    gameOver(isHunter ? 'You got shot!' : 'The pie got you!');
+                    return;
+                }
+
+                // Remove off-screen projectiles
+                if (Math.abs(pos.x) > 20 || Math.abs(pos.z) > 20 || pos.y < -1 || pos.y > 10) {
+                    proj.remove();
+                }
+            });
+        }
+
+        // Game loop
+        let lastTime = 0;
+        function gameLoop(time) {
+            if (time - lastTime > 16) { // ~60fps
+                lastTime = time;
+                update();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
