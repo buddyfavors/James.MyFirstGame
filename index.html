@@ -22,7 +22,6 @@
             padding: 0;
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
-            touch-action: none;
         }
 
         body {
@@ -58,6 +57,7 @@
             max-width: 100%;
             max-height: calc(100vh - 40px);
             max-height: calc(100dvh - 40px);
+            touch-action: none;
         }
 
         /* Mobile-specific styles */
@@ -219,6 +219,9 @@
             text-shadow: 2px 2px 0 var(--bark);
             box-shadow: 0 6px 0 var(--bark), 0 10px 20px rgba(0,0,0,0.3);
             pointer-events: auto;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .btn:hover {
