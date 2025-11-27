@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turkey Evolution - Thanksgiving Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700;900&family=Caveat:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --autumn-orange: #D2691E;
+            --harvest-gold: #DAA520;
+            --pumpkin: #FF7518;
+            --cranberry: #9F1D35;
+            --turkey-brown: #8B4513;
+            --sage-green: #9DC183;
+            --cream: #FFFDD0;
+            --bark: #3D2914;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Fraunces', serif;
+            background: linear-gradient(135deg, #2D1B0E 0%, #4A2C17 50%, #1A0F05 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            background: linear-gradient(180deg, #87CEEB 0%, #FDB347 30%, #D2691E 100%);
+            border: 8px solid var(--bark);
+            border-radius: 20px;
+            box-shadow: 
+                0 0 0 4px var(--harvest-gold),
+                0 20px 60px rgba(0,0,0,0.5),
+                inset 0 0 100px rgba(255,200,100,0.2);
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            display: block;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .level-display {
+            font-family: 'Caveat', cursive;
+            font-size: 28px;
+            color: var(--cream);
+            text-shadow: 3px 3px 0 var(--bark), -1px -1px 0 var(--bark);
+            background: linear-gradient(135deg, var(--cranberry), var(--turkey-brown));
+            padding: 8px 20px;
+            border-radius: 30px;
+            border: 3px solid var(--harvest-gold);
+        }
+
+        .score-display {
+            font-size: 22px;
+            color: var(--harvest-gold);
+            text-shadow: 2px 2px 0 var(--bark);
+        }
+
+        .xp-bar-container {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 25px;
+            background: var(--bark);
+            border-radius: 15px;
+            border: 3px solid var(--harvest-gold);
+            overflow: hidden;
+            box-shadow: inset 0 3px 10px rgba(0,0,0,0.5);
+        }
+
+        .xp-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--sage-green), var(--pumpkin), var(--cranberry));
+            border-radius: 12px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px var(--pumpkin);
+        }
+
+        .xp-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--cream);
+            text-shadow: 1px 1px 2px var(--bark);
+        }
+
+        .start-screen, .game-over-screen, .level-up-screen, .boss-screen, .win-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(29, 15, 5, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            font-family: 'Caveat', cursive;
+            font-size: 64px;
+            color: var(--pumpkin);
+            text-shadow: 4px 4px 0 var(--cranberry), 8px 8px 0 var(--bark);
+            margin-bottom: 20px;
+            animation: wobble 2s ease-in-out infinite;
+        }
+
+        @keyframes wobble {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2deg); }
+        }
+
+        .subtitle {
+            font-size: 24px;
+            color: var(--harvest-gold);
+            margin-bottom: 30px;
+        }
+
+        .instructions {
+            color: var(--cream);
+            font-size: 18px;
+            text-align: center;
+            max-width: 400px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            font-family: 'Fraunces', serif;
+            font-size: 24px;
+            font-weight: 700;
+            padding: 15px 50px;
+            background: linear-gradient(135deg, var(--pumpkin), var(--autumn-orange));
+            color: var(--cream);
+            border: 4px solid var(--harvest-gold);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-shadow: 2px 2px 0 var(--bark);
+            box-shadow: 0 6px 0 var(--bark), 0 10px 20px rgba(0,0,0,0.3);
+            pointer-events: auto;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 9px 0 var(--bark), 0 15px 30px rgba(0,0,0,0.4);
+        }
+
+        .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 3px 0 var(--bark), 0 5px 10px rgba(0,0,0,0.3);
+        }
+
+        .level-name {
+            font-family: 'Caveat', cursive;
+            font-size: 48px;
+            color: var(--sage-green);
+            text-shadow: 3px 3px 0 var(--bark);
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .boss-name {
+            color: var(--cranberry);
+            font-size: 56px;
+        }
+
+        .turkey-emoji {
+            font-size: 80px;
+            animation: bounce 0.5s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .controls-hint {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--harvest-gold);
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="ui-overlay">
+            <div class="level-display" id="levelDisplay">Level 1: Barn Turkey Barn</div>
+            <div class="score-display">🍎 <span id="scoreDisplay">0</span></div>
+        </div>
+        
+        <div class="xp-bar-container">
+            <div class="xp-bar" id="xpBar" style="width: 0%"></div>
+            <div class="xp-text" id="xpText">0 / 10 XP</div>
+        </div>
+
+        <div class="start-screen" id="startScreen">
+            <div class="turkey-emoji">🦃</div>
+            <h1>Turkey Evolution</h1>
+            <p class="subtitle">A Thanksgiving Adventure</p>
+            <div class="instructions">
+                You're a hungry turkey with a BIG mouth!<br><br>
+                🍎 Eat apples to gain XP and level up<br>
+                🥧 Defeat the Pumpkin Pie boss<br>
+                🏃 Survive the hunter in the final level!<br><br>
+                Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move
+            </div>
+            <button class="btn" onclick="startGame()">Start Gobbling!</button>
+        </div>
+
+        <div class="level-up-screen hidden" id="levelUpScreen">
+            <div class="turkey-emoji">🦃</div>
+            <h1>Level Up!</h1>
+            <p class="level-name" id="newLevelName">Turkey Run</p>
+            <p class="instructions" id="levelDescription">You've escaped the barn! Now run through the fields!</p>
+            <button class="btn" onclick="continueGame()">Continue</button>
+        </div>
+
+        <div class="boss-screen hidden" id="bossScreen">
+            <div style="font-size: 80px;">🥧</div>
+            <h1>Boss Fight!</h1>
+            <p class="boss-name">Pumpkin Pie</p>
+            <p class="instructions">The dreaded Pumpkin Pie appears!<br>Eat apples to damage it while avoiding its attacks!</p>
+            <button class="btn" onclick="startBossFight()">Fight!</button>
+        </div>
+
+        <div class="game-over-screen hidden" id="gameOverScreen">
+            <div style="font-size: 80px;">💀</div>
+            <h1>Game Over!</h1>
+            <p class="subtitle" id="deathMessage">The turkey has been caught!</p>
+            <p class="instructions">Final Score: <span id="finalScore">0</span> apples</p>
+            <button class="btn" onclick="restartGame()">Try Again</button>
+        </div>
+
+        <div class="win-screen hidden" id="winScreen">
+            <div style="font-size: 80px;">🏆</div>
+            <h1>Victory!</h1>
+            <p class="level-name">The Turkey Survives Thanksgiving!</p>
+            <p class="instructions">You've evolved from a barn turkey to a legendary survivor!<br><br>Final Score: <span id="winScore">0</span> apples</p>
+            <button class="btn" onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game State
+        let gameState = 'start'; // start, playing, levelup, boss, gameover, win
+        let currentLevel = 1;
+        let score = 0;
+        let xp = 0;
+        let xpNeeded = 10;
+
+        // Level definitions
+        const levels = {
+            1: { name: 'Barn Turkey Barn', xpNeeded: 10, bgColor: '#8B4513', description: 'Eat apples in the cozy barn!' },
+            2: { name: 'Turkey Run', xpNeeded: 15, bgColor: '#228B22', description: 'Run through the autumn fields!' },
+            3: { name: 'Hunter Hunt Down', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Escape the hunter!' }
+        };
+
+        // Turkey
+        const turkey = {
+            x: 400,
+            y: 300,
+            width: 60,
+            height: 50,
+            speed: 5,
+            mouthOpen: 0,
+            direction: 1,
+            evolution: 1
+        };
+
+        // Apples
+        let apples = [];
+
+        // Boss
+        let boss = null;
+        let bossProjectiles = [];
+
+        // Hunter (Level 3)
+        let hunter = null;
+
+        // Particles
+        let particles = [];
+
+        // Input
+        const keys = {};
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            keys[e.code] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            keys[e.code] = false;
+        });
+
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            gameState = 'playing';
+            resetLevel();
+            gameLoop();
+        }
+
+        function continueGame() {
+            document.getElementById('levelUpScreen').classList.add('hidden');
+            gameState = 'playing';
+            resetLevel();
+        }
+
+        function startBossFight() {
+            document.getElementById('bossScreen').classList.add('hidden');
+            gameState = 'boss';
+            initBoss();
+        }
+
+        function restartGame() {
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('winScreen').classList.add('hidden');
+            currentLevel = 1;
+            score = 0;
+            xp = 0;
+            turkey.evolution = 1;
+            turkey.x = 400;
+            turkey.y = 300;
+            gameState = 'playing';
+            resetLevel();
+        }
+
+        function resetLevel() {
+            apples = [];
+            particles = [];
+            bossProjectiles = [];
+            boss = null;
+            hunter = null;
+            xp = 0;
+            xpNeeded = levels[currentLevel].xpNeeded;
+            turkey.x = 400;
+            turkey.y = 300;
+            
+            // Spawn initial apples
+            for (let i = 0; i < 5; i++) {
+                spawnApple();
+            }
+
+            // Spawn hunter for level 3
+            if (currentLevel === 3) {
+                hunter = {
+                    x: 700,
+                    y: 300,
+                    width: 50,
+                    height: 70,
+                    speed: 2,
+                    shootTimer: 0
+                };
+            }
+
+            updateUI();
+        }
+
+        function initBoss() {
+            boss = {
+                x: 600,
+                y: 200,
+                width: 100,
+                height: 100,
+                health: 10,
+                maxHealth: 10,
+                speed: 2,
+                direction: 1,
+                attackTimer: 0
+            };
+            apples = [];
+            for (let i = 0; i < 3; i++) {
+                spawnApple();
+            }
+        }
+
+        function spawnApple() {
+            apples.push({
+                x: Math.random() * (canvas.width - 100) + 50,
+                y: Math.random() * (canvas.height - 150) + 50,
+                size: 25,
+                rotation: Math.random() * Math.PI * 2,
+                bobOffset: Math.random() * Math.PI * 2
+            });
+        }
+
+        function spawnParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    size: Math.random() * 8 + 4,
+                    color: color,
+                    life: 1
+                });
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('levelDisplay').textContent = `Level ${currentLevel}: ${levels[currentLevel].name}`;
+            document.getElementById('scoreDisplay').textContent = score;
+            const xpPercent = (xp / xpNeeded) * 100;
+            document.getElementById('xpBar').style.width = xpPercent + '%';
+            document.getElementById('xpText').textContent = `${xp} / ${xpNeeded} XP`;
+        }
+
+        function update() {
+            if (gameState !== 'playing' && gameState !== 'boss') return;
+
+            // Move turkey
+            let dx = 0, dy = 0;
+            if (keys['arrowleft'] || keys['a'] || keys['ArrowLeft']) dx -= 1;
+            if (keys['arrowright'] || keys['d'] || keys['ArrowRight']) dx += 1;
+            if (keys['arrowup'] || keys['w'] || keys['ArrowUp']) dy -= 1;
+            if (keys['arrowdown'] || keys['s'] || keys['ArrowDown']) dy += 1;
+
+            if (dx !== 0 || dy !== 0) {
+                const len = Math.sqrt(dx * dx + dy * dy);
+                dx /= len;
+                dy /= len;
+                turkey.x += dx * turkey.speed;
+                turkey.y += dy * turkey.speed;
+                turkey.direction = dx >= 0 ? 1 : -1;
+            }
+
+            // Animate mouth
+            turkey.mouthOpen = Math.sin(Date.now() / 100) * 0.3 + 0.3;
+
+            // Clamp position
+            turkey.x = Math.max(turkey.width / 2, Math.min(canvas.width - turkey.width / 2, turkey.x));
+            turkey.y = Math.max(turkey.height / 2, Math.min(canvas.height - turkey.height / 2 - 30, turkey.y));
+
+            // Check apple collisions
+            for (let i = apples.length - 1; i >= 0; i--) {
+                const apple = apples[i];
+                const dist = Math.hypot(turkey.x - apple.x, turkey.y - apple.y);
+                if (dist < turkey.width / 2 + apple.size / 2) {
+                    // Eat apple!
+                    spawnParticles(apple.x, apple.y, '#FF0000', 8);
+                    spawnParticles(apple.x, apple.y, '#00FF00', 4);
+                    apples.splice(i, 1);
+                    score++;
+                    
+                    if (gameState === 'boss' && boss) {
+                        boss.health--;
+                        spawnParticles(boss.x, boss.y, '#FF7518', 15);
+                        if (boss.health <= 0) {
+                            // Boss defeated!
+                            spawnParticles(boss.x, boss.y, '#FFD700', 30);
+                            boss = null;
+                            levelUp();
+                        }
+                    } else {
+                        xp++;
+                        if (xp >= xpNeeded) {
+                            if (currentLevel === 1) {
+                                // Show boss screen after level 1
+                                gameState = 'boss';
+                                document.getElementById('bossScreen').classList.remove('hidden');
+                            } else {
+                                levelUp();
+                            }
+                        }
+                    }
+                    
+                    spawnApple();
+                    updateUI();
+                }
+            }
+
+            // Update boss
+            if (gameState === 'boss' && boss) {
+                boss.y += boss.speed * boss.direction;
+                if (boss.y < 100 || boss.y > canvas.height - 150) {
+                    boss.direction *= -1;
+                }
+
+                boss.attackTimer++;
+                if (boss.attackTimer > 60) {
+                    boss.attackTimer = 0;
+                    // Shoot projectile
+                    bossProjectiles.push({
+                        x: boss.x,
+                        y: boss.y + boss.height / 2,
+                        vx: -6,
+                        vy: (Math.random() - 0.5) * 4,
+                        size: 20
+                    });
+                }
+            }
+
+            // Update hunter (level 3)
+            if (hunter && gameState === 'playing') {
+                // Hunter follows turkey
+                const hdx = turkey.x - hunter.x;
+                const hdy = turkey.y - hunter.y;
+                const hdist = Math.hypot(hdx, hdy);
+                if (hdist > 150) {
+                    hunter.x += (hdx / hdist) * hunter.speed;
+                    hunter.y += (hdy / hdist) * hunter.speed;
+                }
+
+                hunter.shootTimer++;
+                if (hunter.shootTimer > 90) {
+                    hunter.shootTimer = 0;
+                    const angle = Math.atan2(turkey.y - hunter.y, turkey.x - hunter.x);
+                    bossProjectiles.push({
+                        x: hunter.x,
+                        y: hunter.y,
+                        vx: Math.cos(angle) * 7,
+                        vy: Math.sin(angle) * 7,
+                        size: 15,
+                        isHunter: true
+                    });
+                }
+
+                // Check collision with hunter
+                const hunterDist = Math.hypot(turkey.x - hunter.x, turkey.y - hunter.y);
+                if (hunterDist < turkey.width / 2 + hunter.width / 2) {
+                    gameOver('The hunter caught you!');
+                }
+            }
+
+            // Update projectiles
+            for (let i = bossProjectiles.length - 1; i >= 0; i--) {
+                const proj = bossProjectiles[i];
+                proj.x += proj.vx;
+                proj.y += proj.vy;
+
+                // Check collision with turkey
+                const dist = Math.hypot(turkey.x - proj.x, turkey.y - proj.y);
+                if (dist < turkey.width / 2 + proj.size / 2) {
+                    gameOver(proj.isHunter ? 'You got shot!' : 'The pie got you!');
+                    return;
+                }
+
+                // Remove off-screen
+                if (proj.x < -50 || proj.x > canvas.width + 50 || proj.y < -50 || proj.y > canvas.height + 50) {
+                    bossProjectiles.splice(i, 1);
+                }
+            }
+
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.life -= 0.02;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function levelUp() {
+            currentLevel++;
+            turkey.evolution++;
+            
+            if (currentLevel > 3) {
+                // Win!
+                gameState = 'win';
+                document.getElementById('winScore').textContent = score;
+                document.getElementById('winScreen').classList.remove('hidden');
+                return;
+            }
+
+            gameState = 'levelup';
+            document.getElementById('newLevelName').textContent = levels[currentLevel].name;
+            document.getElementById('levelDescription').textContent = levels[currentLevel].description;
+            document.getElementById('levelUpScreen').classList.remove('hidden');
+        }
+
+        function gameOver(message) {
+            gameState = 'gameover';
+            document.getElementById('deathMessage').textContent = message;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        function drawBackground() {
+            // Sky gradient based on level
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            
+            if (currentLevel === 1) {
+                // Barn - warm indoor
+                gradient.addColorStop(0, '#8B4513');
+                gradient.addColorStop(1, '#5D3A1A');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw barn planks
+                ctx.strokeStyle = '#4A2C17';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < canvas.width; i += 80) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i, canvas.height);
+                    ctx.stroke();
+                }
+                
+                // Hay on ground
+                ctx.fillStyle = '#DAA520';
+                for (let i = 0; i < 30; i++) {
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        (i * 30) % canvas.width,
+                        canvas.height - 30 + Math.sin(i) * 10,
+                        20, 8, 0, 0, Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+            } else if (currentLevel === 2 || (gameState === 'boss' && currentLevel === 1)) {
+                // Outdoor autumn field
+                gradient.addColorStop(0, '#87CEEB');
+                gradient.addColorStop(0.6, '#FDB347');
+                gradient.addColorStop(1, '#228B22');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw grass
+                ctx.fillStyle = '#228B22';
+                ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
+                
+                // Autumn trees
+                for (let i = 0; i < 5; i++) {
+                    const tx = i * 200 + 50;
+                    ctx.fillStyle = '#5D3A1A';
+                    ctx.fillRect(tx - 10, canvas.height - 180, 20, 100);
+                    ctx.beginPath();
+                    ctx.fillStyle = ['#FF6347', '#FF8C00', '#FFD700', '#DC143C'][i % 4];
+                    ctx.arc(tx, canvas.height - 200, 60, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            } else {
+                // Night forest - hunter level
+                gradient.addColorStop(0, '#1a1a2e');
+                gradient.addColorStop(1, '#16213e');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Moon
+                ctx.fillStyle = '#FFFACD';
+                ctx.beginPath();
+                ctx.arc(650, 80, 40, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Dark trees
+                ctx.fillStyle = '#0f0f23';
+                for (let i = 0; i < 8; i++) {
+                    const tx = i * 120;
+                    ctx.beginPath();
+                    ctx.moveTo(tx, canvas.height);
+                    ctx.lineTo(tx + 40, canvas.height - 200 - Math.random() * 100);
+                    ctx.lineTo(tx + 80, canvas.height);
+                    ctx.fill();
+                }
+                
+                // Ground
+                ctx.fillStyle = '#2d4a3e';
+                ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+            }
+        }
+
+        function drawTurkey() {
+            ctx.save();
+            ctx.translate(turkey.x, turkey.y);
+            ctx.scale(turkey.direction, 1);
+            
+            const scale = 1 + (turkey.evolution - 1) * 0.2;
+            ctx.scale(scale, scale);
+            
+            // Tail feathers
+            const tailColors = ['#8B0000', '#FF4500', '#FFD700', '#8B4513', '#FF6347'];
+            for (let i = 0; i < 5; i++) {
+                ctx.fillStyle = tailColors[i];
+                ctx.beginPath();
+                const angle = (i - 2) * 0.4 - Math.PI / 2;
+                ctx.ellipse(
+                    Math.cos(angle) * 25 - 10,
+                    Math.sin(angle) * 25 - 5,
+                    12, 30,
+                    angle + Math.PI / 2,
+                    0, Math.PI * 2
+                );
+                ctx.fill();
+            }
+            
+            // Body
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.ellipse(0, 5, 25, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Head
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.arc(20, -5, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Wattle (red thing under beak)
+            ctx.fillStyle = '#FF0000';
+            ctx.beginPath();
+            ctx.ellipse(28, 5, 5, 10, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Snood (red thing on top)
+            ctx.fillStyle = '#FF0000';
+            ctx.beginPath();
+            ctx.ellipse(25, -15, 4, 8, -0.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // BIG MOUTH / Beak
+            ctx.fillStyle = '#FFA500';
+            ctx.beginPath();
+            const mouthOpenAmount = turkey.mouthOpen * 15;
+            // Upper beak
+            ctx.moveTo(30, -8);
+            ctx.lineTo(55, -5 - mouthOpenAmount);
+            ctx.lineTo(30, -2);
+            ctx.fill();
+            // Lower beak
+            ctx.beginPath();
+            ctx.moveTo(30, -2);
+            ctx.lineTo(55, 5 + mouthOpenAmount);
+            ctx.lineTo(30, 2);
+            ctx.fill();
+            
+            // Eye
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(25, -8, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(26, -9, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Legs
+            ctx.strokeStyle = '#FFA500';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-5, 20);
+            ctx.lineTo(-8, 35);
+            ctx.moveTo(-8, 35);
+            ctx.lineTo(-15, 40);
+            ctx.moveTo(-8, 35);
+            ctx.lineTo(-5, 42);
+            ctx.moveTo(-8, 35);
+            ctx.lineTo(-2, 40);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(5, 20);
+            ctx.lineTo(8, 35);
+            ctx.moveTo(8, 35);
+            ctx.lineTo(2, 40);
+            ctx.moveTo(8, 35);
+            ctx.lineTo(8, 42);
+            ctx.moveTo(8, 35);
+            ctx.lineTo(15, 40);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        function drawApple(apple) {
+            ctx.save();
+            ctx.translate(apple.x, apple.y + Math.sin(Date.now() / 300 + apple.bobOffset) * 5);
+            
+            // Apple body
+            ctx.fillStyle = '#FF0000';
+            ctx.beginPath();
+            ctx.arc(0, 0, apple.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.beginPath();
+            ctx.arc(-5, -5, apple.size / 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Stem
+            ctx.strokeStyle = '#5D3A1A';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, -apple.size / 2);
+            ctx.lineTo(2, -apple.size / 2 - 8);
+            ctx.stroke();
+            
+            // Leaf
+            ctx.fillStyle = '#228B22';
+            ctx.beginPath();
+            ctx.ellipse(6, -apple.size / 2 - 5, 6, 3, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        function drawBoss() {
+            if (!boss) return;
+            
+            ctx.save();
+            ctx.translate(boss.x, boss.y);
+            
+            // Pie dish
+            ctx.fillStyle = '#CD853F';
+            ctx.beginPath();
+            ctx.ellipse(0, boss.height / 2 - 10, boss.width / 2 + 10, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Pie filling
+            ctx.fillStyle = '#FF7518';
+            ctx.beginPath();
+            ctx.arc(0, 0, boss.width / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Crust edge
+            ctx.strokeStyle = '#DEB887';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.arc(0, 0, boss.width / 2 - 2, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Whipped cream swirls
+            ctx.fillStyle = '#FFFAF0';
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.arc(
+                    Math.cos(angle) * 25,
+                    Math.sin(angle) * 25,
+                    12, 0, Math.PI * 2
+                );
+                ctx.fill();
+            }
+            
+            // Center cream dollop
+            ctx.beginPath();
+            ctx.arc(0, 0, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Evil face
+            ctx.fillStyle = '#000';
+            // Eyes
+            ctx.beginPath();
+            ctx.arc(-15, -5, 6, 0, Math.PI * 2);
+            ctx.arc(15, -5, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Evil eyebrows
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-25, -15);
+            ctx.lineTo(-8, -12);
+            ctx.moveTo(25, -15);
+            ctx.lineTo(8, -12);
+            ctx.stroke();
+            
+            // Evil smile
+            ctx.beginPath();
+            ctx.arc(0, 10, 15, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+            
+            // Health bar
+            ctx.fillStyle = '#333';
+            ctx.fillRect(-40, -boss.height / 2 - 20, 80, 10);
+            ctx.fillStyle = '#FF0000';
+            ctx.fillRect(-38, -boss.height / 2 - 18, 76 * (boss.health / boss.maxHealth), 6);
+            
+            ctx.restore();
+        }
+
+        function drawHunter() {
+            if (!hunter) return;
+            
+            ctx.save();
+            ctx.translate(hunter.x, hunter.y);
+            
+            // Body
+            ctx.fillStyle = '#556B2F';
+            ctx.fillRect(-15, -20, 30, 40);
+            
+            // Head
+            ctx.fillStyle = '#DEB887';
+            ctx.beginPath();
+            ctx.arc(0, -30, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hunter hat
+            ctx.fillStyle = '#FF4500';
+            ctx.fillRect(-18, -45, 36, 10);
+            ctx.fillRect(-12, -55, 24, 12);
+            
+            // Gun
+            ctx.fillStyle = '#333';
+            ctx.fillRect(-30, -5, 25, 6);
+            ctx.fillRect(-35, -8, 8, 12);
+            
+            // Legs
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(-12, 20, 10, 25);
+            ctx.fillRect(2, 20, 10, 25);
+            
+            // Angry eyes
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(-5, -32, 3, 0, Math.PI * 2);
+            ctx.arc(5, -32, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        function drawProjectiles() {
+            bossProjectiles.forEach(proj => {
+                ctx.save();
+                ctx.translate(proj.x, proj.y);
+                
+                if (proj.isHunter) {
+                    // Bullet
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, proj.size, proj.size / 2, Math.atan2(proj.vy, proj.vx), 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Pie slice projectile
+                    ctx.fillStyle = '#FF7518';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.arc(0, 0, proj.size, 0, Math.PI / 3);
+                    ctx.fill();
+                    ctx.strokeStyle = '#DEB887';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            });
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawBackground();
+            
+            if (gameState === 'playing' || gameState === 'boss') {
+                apples.forEach(drawApple);
+                drawProjectiles();
+                drawTurkey();
+                if (boss) drawBoss();
+                if (hunter) drawHunter();
+                drawParticles();
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize
+        draw();
+    </script>
+</body>
+</html>
