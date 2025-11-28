@@ -11,9 +11,8 @@ A fun browser-based game where you play as a hungry turkey trying to survive Tha
 
 ### Classic 2D Version (`index.html`)
 1. Open `index.html` in any modern web browser
-2. Use **Arrow Keys** or **WASD** to move your turkey
-3. Eat apples 🍎 to gain XP and level up
-4. Survive all three levels to win!
+2. Eat apples 🍎 to gain XP and level up
+3. Survive all three levels to win!
 
 ### 🥽 VR Version (`vr.html`)
 1. Open `vr.html` in a WebXR-compatible browser (Chrome, Firefox, Edge, Oculus Browser)
