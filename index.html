@@ -1531,8 +1531,8 @@
                 // Wood escape maze with tree-like walls and random door openings
                 generateEscapeMaze('rock', 0.35);
             } else if (level === LEVEL_IDS.SPACE_ESCAPE) {
-                // Space escape maze with satellite/debris walls and random door openings
-                generateEscapeMaze('haybale', 0.4);
+                // Space escape maze with rock walls and random door openings
+                generateEscapeMaze('rock', 0.4);
             }
         }
 
@@ -1622,10 +1622,10 @@
         function generateEscapeMaze(wallType, doorChance = 0.35) {
             barriers = [];
             const wallThickness = 22;
-            // Edge margin: at least 2x turkey width (turkey is 60px, so 120px minimum)
-            const edgeMargin = 130;
-            // Door opening must be wide enough for the turkey to fit through
-            const minDoorWidth = 100;
+            // Edge margin: reduced to bring walls closer to edge while keeping a path
+            const edgeMargin = 80;
+            // Door opening must be wide enough for plenty of the turkey to fit through
+            const minDoorWidth = 150;
             
             // NO OUTER WALLS - edges are always clear for movement
             
