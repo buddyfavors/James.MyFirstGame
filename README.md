@@ -2,6 +2,11 @@
 
 A fun browser-based game where you play as a hungry turkey trying to survive Thanksgiving!
 
+## 🌐 Play Online
+
+- [Classic 2D Game](https://buddyfavors.github.io/James.MyFirstGame/)
+- [VR / 3D Mode](https://buddyfavors.github.io/James.MyFirstGame/vr.html)
+
 ## 🎮 How to Play
 
 ### Classic 2D Version (`index.html`)
