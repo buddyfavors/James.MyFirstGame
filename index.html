@@ -471,8 +471,8 @@
             <div class="instructions">
                 Congrats, you're the entree that escaped the fridge and discovered cardio.<br><br>
                 🍗 Hoover apples, roast hunters with sarcasm, and get too swole for their oven.<br><br>
-                <span class="desktop-controls">Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move<br>Press <strong>SPACE</strong> to peck attack!</span>
-                <span class="mobile-controls">👆 <strong>Touch & drag</strong> anywhere to move<br>👆👆 <strong>Double-tap</strong> to peck attack!</span>
+                <span class="desktop-controls">Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move<br>or simply <strong>click & drag</strong> where you want to go<br>Press <strong>SPACE</strong> to peck attack!</span>
+                <span class="mobile-controls">👆 <strong>Touch & hold</strong> anywhere to guide the turkey<br>👆👆 <strong>Double-tap</strong> to peck attack!</span>
             </div>
             <button class="btn" onclick="startGame()">Start Gobbling!</button>
             <a href="vr.html" style="display: block; margin-top: 20px; color: #DAA520; font-size: 16px; text-decoration: none; opacity: 0.9;">🥽 Try VR Version</a>
@@ -565,12 +565,10 @@
         let levelCountdownInterval = null;
         let levelCountdownRemaining = 0;
 
-        // Touch state
+        // Pointer/touch state
         let touchActive = false;
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let touchCurrentX = 0;
-        let touchCurrentY = 0;
+        let touchTarget = null;
+        let pointerIndicatorVisible = false;
         let canvasScale = 1;
 
         // Peck attack state
@@ -705,12 +703,12 @@
             }
         }
 
-        // Touch event helpers
-        function getTouchPos(touch) {
+        // Pointer/touch helpers
+        function getPointerPos(clientX, clientY) {
             const rect = canvas.getBoundingClientRect();
             return {
-                x: (touch.clientX - rect.left) / canvasScale,
-                y: (touch.clientY - rect.top) / canvasScale
+                x: (clientX - rect.left) / canvasScale,
+                y: (clientY - rect.top) / canvasScale
             };
         }
 
@@ -722,11 +720,40 @@
             touchIndicator.style.top = (clientY - rect.top - offset) + 'px';
         }
 
+        function startPointerControl(clientX, clientY, showIndicator = false) {
+            touchActive = true;
+            touchTarget = getPointerPos(clientX, clientY);
+            pointerIndicatorVisible = showIndicator;
+            if (showIndicator) {
+                touchIndicator.classList.add('visible');
+                updateTouchIndicator(clientX, clientY);
+            }
+        }
+
+        function movePointerControl(clientX, clientY, showIndicator = false) {
+            if (!touchActive) return;
+            touchTarget = getPointerPos(clientX, clientY);
+            if (showIndicator || pointerIndicatorVisible) {
+                pointerIndicatorVisible = true;
+                touchIndicator.classList.add('visible');
+                updateTouchIndicator(clientX, clientY);
+            }
+        }
+
+        function endPointerControl() {
+            touchActive = false;
+            touchTarget = null;
+            if (pointerIndicatorVisible) {
+                pointerIndicatorVisible = false;
+                touchIndicator.classList.remove('visible');
+            }
+        }
+
         // Double-tap detection for peck attack
         let lastTapTime = 0;
         const DOUBLE_TAP_DELAY = 300; // ms
 
-        // Touch events for dragging movement
+        // Touch events for guiding movement
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (gameState !== 'playing' && gameState !== 'boss') return;
@@ -742,14 +769,7 @@
                 lastTapTime = currentTime;
             }
             
-            touchActive = true;
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            touchCurrentX = touch.clientX;
-            touchCurrentY = touch.clientY;
-            
-            touchIndicator.classList.add('visible');
-            updateTouchIndicator(touch.clientX, touch.clientY);
+            startPointerControl(touch.clientX, touch.clientY, true);
         }, { passive: false });
 
         canvas.addEventListener('touchmove', (e) => {
@@ -757,21 +777,40 @@
             if (!touchActive) return;
             
             const touch = e.touches[0];
-            touchCurrentX = touch.clientX;
-            touchCurrentY = touch.clientY;
-            
-            updateTouchIndicator(touch.clientX, touch.clientY);
+            movePointerControl(touch.clientX, touch.clientY, true);
         }, { passive: false });
 
         canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
-            touchActive = false;
-            touchIndicator.classList.remove('visible');
+            if (e.touches.length > 0) {
+                const touch = e.touches[0];
+                movePointerControl(touch.clientX, touch.clientY, true);
+                return;
+            }
+            endPointerControl();
         }, { passive: false });
 
-        canvas.addEventListener('touchcancel', (e) => {
-            touchActive = false;
-            touchIndicator.classList.remove('visible');
+        canvas.addEventListener('touchcancel', () => {
+            endPointerControl();
+        });
+
+        const mouseMoveHandler = (event) => {
+            movePointerControl(event.clientX, event.clientY);
+        };
+
+        const mouseUpHandler = () => {
+            endPointerControl();
+            window.removeEventListener('mousemove', mouseMoveHandler);
+            window.removeEventListener('mouseup', mouseUpHandler);
+        };
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            if (gameState !== 'playing' && gameState !== 'boss') return;
+            e.preventDefault();
+            startPointerControl(e.clientX, e.clientY);
+            window.addEventListener('mousemove', mouseMoveHandler);
+            window.addEventListener('mouseup', mouseUpHandler);
         });
 
         // Handle window resize for responsive canvas
@@ -1316,37 +1355,47 @@
             }
 
             // Move turkey
-            let dx = 0, dy = 0;
+            let keyboardDx = 0;
+            let keyboardDy = 0;
+            let moveDx = 0;
+            let moveDy = 0;
+            let speedMultiplier = 1;
             
-            // Keyboard input
-            if (keys['arrowleft'] || keys['a'] || keys['ArrowLeft']) dx -= 1;
-            if (keys['arrowright'] || keys['d'] || keys['ArrowRight']) dx += 1;
-            if (keys['arrowup'] || keys['w'] || keys['ArrowUp']) dy -= 1;
-            if (keys['arrowdown'] || keys['s'] || keys['ArrowDown']) dy += 1;
+            const keyLeft = keys['arrowleft'] || keys['a'] || keys['ArrowLeft'];
+            const keyRight = keys['arrowright'] || keys['d'] || keys['ArrowRight'];
+            const keyUp = keys['arrowup'] || keys['w'] || keys['ArrowUp'];
+            const keyDown = keys['arrowdown'] || keys['s'] || keys['ArrowDown'];
 
-            // Touch/drag input - movement based on drag direction from start point
-            if (touchActive) {
-                const dragDx = touchCurrentX - touchStartX;
-                const dragDy = touchCurrentY - touchStartY;
-                const dragDist = Math.hypot(dragDx, dragDy);
-                
-                // Dead zone of 10 pixels to prevent accidental movement
-                if (dragDist > 10) {
-                    // Normalize and scale by drag distance (more drag = faster movement)
-                    const intensity = Math.min(dragDist / 50, 1.5); // Cap at 1.5x speed
-                    dx += (dragDx / dragDist) * intensity;
-                    dy += (dragDy / dragDist) * intensity;
+            if (keyLeft) keyboardDx -= 1;
+            if (keyRight) keyboardDx += 1;
+            if (keyUp) keyboardDy -= 1;
+            if (keyDown) keyboardDy += 1;
+
+            moveDx = keyboardDx;
+            moveDy = keyboardDy;
+
+            if (touchActive && touchTarget) {
+                const toTargetX = touchTarget.x - turkey.x;
+                const toTargetY = touchTarget.y - turkey.y;
+                const distToTarget = Math.hypot(toTargetX, toTargetY);
+
+                if (distToTarget > 6) {
+                    moveDx = toTargetX / distToTarget;
+                    moveDy = toTargetY / distToTarget;
+                    speedMultiplier = Math.min(1 + distToTarget / 200, 2);
+                } else if (!keyboardDx && !keyboardDy) {
+                    moveDx = 0;
+                    moveDy = 0;
                 }
             }
 
-            if (dx !== 0 || dy !== 0) {
-                const len = Math.sqrt(dx * dx + dy * dy);
-                dx /= len;
-                dy /= len;
-                const speedMultiplier = touchActive ? Math.min(Math.hypot(touchCurrentX - touchStartX, touchCurrentY - touchStartY) / 50, 1.5) : 1;
-                turkey.x += dx * turkey.speed * speedMultiplier;
-                turkey.y += dy * turkey.speed * speedMultiplier;
-                turkey.direction = dx >= 0 ? 1 : -1;
+            if (moveDx !== 0 || moveDy !== 0) {
+                const len = Math.hypot(moveDx, moveDy);
+                moveDx /= len;
+                moveDy /= len;
+                turkey.x += moveDx * turkey.speed * speedMultiplier;
+                turkey.y += moveDy * turkey.speed * speedMultiplier;
+                turkey.direction = moveDx >= 0 ? 1 : -1;
             }
 
             if (currentLevel === 5 || (boss && boss.type === BOSS_TYPES.AURORA) || nextBossType === BOSS_TYPES.AURORA) {
