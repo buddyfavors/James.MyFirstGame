@@ -1136,6 +1136,7 @@
             thrownNets = [];
             bomber = null;
             barriers = [];
+            window.mazePaths = []; // Clear maze paths from previous level
             paradeFloat = null;
             xp = 0;
             bomberRoundsSurvived = 0;
@@ -1174,17 +1175,28 @@
                 ensureAuroraAmbience(true);
             } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
                 spawnCornMazeLevel();
+                // Position turkey on a path - row 9 has tunnel exits, row 19 has paths
+                const cellHeight = BASE_HEIGHT / 21;
                 turkey.x = BASE_WIDTH / 2;
-                turkey.y = BASE_HEIGHT - 120;
+                turkey.y = cellHeight * 19 + cellHeight / 2; // Row 19 is a path row
             } else if (currentLevel === LEVEL_IDS.PARADE) {
                 spawnParadeWorkshop();
                 initParadeFloatBuilder();
             } else if (currentLevel === LEVEL_IDS.BARN_ESCAPE) {
                 spawnBarriersForLevel(LEVEL_IDS.BARN_ESCAPE);
+                // Position turkey on a path cell (row 17 is a path row in escape maze)
+                const cellHeight = BASE_HEIGHT / 19;
+                turkey.y = cellHeight * 17 + cellHeight / 2;
             } else if (currentLevel === LEVEL_IDS.WOOD_ESCAPE) {
                 spawnBarriersForLevel(LEVEL_IDS.WOOD_ESCAPE);
+                // Position turkey on a path cell
+                const cellHeight = BASE_HEIGHT / 19;
+                turkey.y = cellHeight * 17 + cellHeight / 2;
             } else if (currentLevel === LEVEL_IDS.SPACE_ESCAPE) {
                 spawnBarriersForLevel(LEVEL_IDS.SPACE_ESCAPE);
+                // Position turkey on a path cell
+                const cellHeight = BASE_HEIGHT / 19;
+                turkey.y = cellHeight * 17 + cellHeight / 2;
             }
 
             updateUI();
@@ -1477,31 +1489,45 @@
                 });
 
             } else if (level === LEVEL_IDS.STEALTH_BOMBER) {
-                const coverBandTop = BASE_HEIGHT - BOMBER_GROUND_BAND_HEIGHT + 20;
-                // Raise barriers above turkey head height (turkey is ~50px tall)
-                // Place barriers 70px above the ground band for clearance above turkey
-                const elevationOffset = 70;
-                const hayRowY = coverBandTop - elevationOffset;
-                const hayColumns = [0.18, 0.38, 0.58, 0.78];
+                // Barriers positioned MUCH higher - in the sky area above the turkey's ground band
+                // Turkey moves in the bottom ground band, barriers are visual obstacles high above
+                const barrierBaseY = BASE_HEIGHT * 0.15; // Very high up - top 15% of screen
+                
+                // Row of hay bales floating high above
+                const hayColumns = [0.12, 0.28, 0.44, 0.60, 0.76, 0.88];
                 hayColumns.forEach((ratio, index) => {
                     barriers.push({
                         x: BASE_WIDTH * ratio,
-                        y: hayRowY + (index % 2) * 15,
-                        width: 70,
-                        height: 45,
+                        y: barrierBaseY + (index % 3) * 50,
+                        width: 80,
+                        height: 50,
                         type: 'haybale'
                     });
                 });
 
-                const rockRowY = coverBandTop - elevationOffset + 50;
-                const rockColumns = [0.3, 0.5, 0.7];
-                rockColumns.forEach(ratio => {
+                // Row of rocks/bunkers even higher
+                const rockRowY = barrierBaseY + 160;
+                const rockColumns = [0.2, 0.4, 0.6, 0.8];
+                rockColumns.forEach((ratio, index) => {
                     barriers.push({
                         x: BASE_WIDTH * ratio,
-                        y: rockRowY,
-                        width: 80,
-                        height: 55,
-                        type: 'rock'
+                        y: rockRowY + (index % 2) * 40,
+                        width: 90,
+                        height: 60,
+                        type: 'bunker'
+                    });
+                });
+                
+                // Third row of obstacles
+                const thirdRowY = barrierBaseY + 280;
+                const thirdColumns = [0.15, 0.35, 0.55, 0.75, 0.95];
+                thirdColumns.forEach((ratio, index) => {
+                    barriers.push({
+                        x: BASE_WIDTH * ratio,
+                        y: thirdRowY + (index % 2) * 35,
+                        width: 70,
+                        height: 45,
+                        type: index % 2 === 0 ? 'haybale' : 'rock'
                     });
                 });
 
@@ -1538,146 +1564,134 @@
 
         function spawnCornMazeLevel() {
             barriers = [];
-            // Maze with clear paths along all edges (at least 2x turkey width = 120px)
-            const edgeMargin = 130; // Clear path along edges
-            const wallThickness = 22;
+            // Full-screen Pac-Man style maze
+            const wallThickness = 18;
+            const edgeWall = 12; // Thin walls at edges
             
-            // Interior maze pattern - no walls near edges
-            // Layout creates interesting paths while keeping edges clear
+            // Pac-Man style maze pattern (1 = wall, 0 = path)
+            // This creates classic Pac-Man corridors filling the screen
             const mazePattern = [
-                [0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,1,1,0,0,1,1,1,0,0,0],
-                [0,0,1,0,0,0,0,0,1,0,0,0],
-                [0,0,0,0,1,1,0,0,0,0,0,0],
-                [0,0,1,0,0,0,0,1,0,0,0,0],
-                [0,0,1,1,0,1,1,1,0,0,0,0],
-                [0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,1,0,1,1,0,1,0,0,0,0],
-                [0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,0,0,0,0,0,0,0,0,0,0]
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+                [1,0,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,0,1],
+                [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
+                [1,1,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,1,1],
+                [1,1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1,1],
+                [1,1,1,1,1,0,1,0,1,1,0,1,1,0,1,0,1,1,1,1,1],
+                [0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0],
+                [1,1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1],
+                [1,1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1,1],
+                [1,1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1],
+                [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
+                [1,0,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1],
+                [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1],
+                [1,1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1,1],
+                [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
+                [1,0,1,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
             ];
             
             const patternRows = mazePattern.length;
             const patternCols = mazePattern[0].length;
             
-            // Calculate scale to fit interior area (excluding edge margins)
-            const interiorWidth = BASE_WIDTH - (edgeMargin * 2);
-            const interiorHeight = BASE_HEIGHT - (edgeMargin * 2) - 50; // Extra space at bottom
-            const scaleX = interiorWidth / patternCols;
-            const scaleY = interiorHeight / patternRows;
+            // Full screen scale
+            const cellWidth = BASE_WIDTH / patternCols;
+            const cellHeight = BASE_HEIGHT / patternRows;
             
             for (let row = 0; row < patternRows; row++) {
                 for (let col = 0; col < patternCols; col++) {
                     if (mazePattern[row][col] === 1) {
-                        // Check for horizontal wall segments
-                        let hLength = 1;
-                        while (col + hLength < patternCols && mazePattern[row][col + hLength] === 1) {
-                            hLength++;
-                        }
-                        
-                        // Check for vertical wall segments
-                        let vLength = 1;
-                        while (row + vLength < patternRows && mazePattern[row + vLength][col] === 1) {
-                            vLength++;
-                        }
-                        
-                        // Create wall segment - offset by edge margin
-                        if (hLength >= vLength && hLength > 1) {
-                            barriers.push({
-                                x: edgeMargin + col * scaleX + (hLength * scaleX) / 2,
-                                y: edgeMargin + row * scaleY + scaleY / 2,
-                                width: hLength * scaleX - 10,
-                                height: wallThickness,
-                                type: 'cornWall',
-                                solid: true,
-                                waveOffset: (row + col) * 0.2
-                            });
-                            // Mark these cells as processed
-                            for (let i = 0; i < hLength; i++) {
-                                mazePattern[row][col + i] = 2;
-                            }
-                        } else if (mazePattern[row][col] === 1) {
-                            barriers.push({
-                                x: edgeMargin + col * scaleX + scaleX / 2,
-                                y: edgeMargin + row * scaleY + (vLength * scaleY) / 2,
-                                width: wallThickness,
-                                height: vLength * scaleY - 10,
-                                type: 'cornWall',
-                                solid: true,
-                                waveOffset: (row + col) * 0.3
-                            });
-                            // Mark these cells as processed
-                            for (let i = 0; i < vLength; i++) {
-                                mazePattern[row + i][col] = 2;
-                            }
-                        }
+                        barriers.push({
+                            x: col * cellWidth + cellWidth / 2,
+                            y: row * cellHeight + cellHeight / 2,
+                            width: cellWidth + 2,
+                            height: cellHeight + 2,
+                            type: 'cornWall',
+                            solid: true,
+                            waveOffset: (row + col) * 0.15
+                        });
+                    }
+                }
+            }
+            
+            // Store maze paths for apple spawning
+            window.mazePaths = [];
+            for (let row = 0; row < patternRows; row++) {
+                for (let col = 0; col < patternCols; col++) {
+                    if (mazePattern[row][col] === 0) {
+                        window.mazePaths.push({
+                            x: col * cellWidth + cellWidth / 2,
+                            y: row * cellHeight + cellHeight / 2
+                        });
                     }
                 }
             }
         }
         
-        // Generate random maze pattern for escape levels with door openings
-        // No outer walls - paths along edges are always clear (2x turkey width)
+        // Generate Pac-Man style maze for escape levels - full screen
         function generateEscapeMaze(wallType, doorChance = 0.35) {
             barriers = [];
-            const wallThickness = 22;
-            // Edge margin: reduced to bring walls closer to edge while keeping a path
-            const edgeMargin = 80;
-            // Door opening must be wide enough for plenty of the turkey to fit through
-            const minDoorWidth = 150;
             
-            // NO OUTER WALLS - edges are always clear for movement
-            
-            // Interior maze walls - horizontal rows with random gaps (doors wide enough for turkey)
-            // Keep all interior walls away from screen edges
-            const rowYPositions = [
-                BASE_HEIGHT * 0.28,
-                BASE_HEIGHT * 0.48,
-                BASE_HEIGHT * 0.68
+            // Pac-Man style maze pattern for escape levels (1 = wall, 0 = path)
+            const mazePattern = [
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+                [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1],
+                [1,0,0,1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,1],
+                [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1],
+                [0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0],
+                [1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+                [1,0,0,1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,1],
+                [1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+                [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
             ];
             
-            rowYPositions.forEach((rowY, rowIndex) => {
-                // Create segments with gaps (doors) wide enough for turkey
-                // Start and end segments away from edges
-                const numSegments = 2 + Math.floor(Math.random() * 2);
-                const gapWidth = minDoorWidth + Math.random() * 30;
-                const totalGaps = numSegments - 1;
-                const totalGapWidth = gapWidth * totalGaps;
-                const availableWidth = BASE_WIDTH - (edgeMargin * 2);
-                const segmentWidth = (availableWidth - totalGapWidth) / numSegments;
-                
-                let currentX = edgeMargin;
-                for (let i = 0; i < numSegments; i++) {
-                    barriers.push({
-                        x: currentX + segmentWidth / 2,
-                        y: rowY,
-                        width: segmentWidth,
-                        height: wallThickness,
-                        type: wallType,
-                        solid: true,
-                        waveOffset: rowIndex * 0.3 + i * 0.1
-                    });
-                    currentX += segmentWidth + gapWidth;
-                }
-            });
+            const patternRows = mazePattern.length;
+            const patternCols = mazePattern[0].length;
             
-            // Add some vertical wall segments - but keep them away from edges
-            const numVerticals = 2 + Math.floor(Math.random() * 2);
-            for (let i = 0; i < numVerticals; i++) {
-                const vX = edgeMargin + 50 + Math.random() * (BASE_WIDTH - edgeMargin * 2 - 100);
-                const vY = edgeMargin + 50 + Math.random() * (BASE_HEIGHT - edgeMargin * 2 - 200);
-                const vHeight = 60 + Math.random() * 80;
-                
-                barriers.push({
-                    x: vX,
-                    y: vY + vHeight / 2,
-                    width: wallThickness,
-                    height: vHeight,
-                    type: wallType,
-                    solid: true,
-                    waveOffset: i * 0.4
-                });
+            // Full screen scale
+            const cellWidth = BASE_WIDTH / patternCols;
+            const cellHeight = BASE_HEIGHT / patternRows;
+            
+            for (let row = 0; row < patternRows; row++) {
+                for (let col = 0; col < patternCols; col++) {
+                    if (mazePattern[row][col] === 1) {
+                        barriers.push({
+                            x: col * cellWidth + cellWidth / 2,
+                            y: row * cellHeight + cellHeight / 2,
+                            width: cellWidth + 2,
+                            height: cellHeight + 2,
+                            type: wallType,
+                            solid: true,
+                            waveOffset: (row + col) * 0.15
+                        });
+                    }
+                }
+            }
+            
+            // Store maze paths for apple spawning
+            window.mazePaths = [];
+            for (let row = 0; row < patternRows; row++) {
+                for (let col = 0; col < patternCols; col++) {
+                    if (mazePattern[row][col] === 0) {
+                        window.mazePaths.push({
+                            x: col * cellWidth + cellWidth / 2,
+                            y: row * cellHeight + cellHeight / 2
+                        });
+                    }
+                }
             }
         }
 
@@ -2031,10 +2045,68 @@
             if (apples.length >= maxApples) {
                 return;
             }
+            const size = currentLevel === LEVEL_IDS.PARADE ? 32 : 25;
+            
+            // Check if we're on a maze level with stored paths
+            const isMazeLevel = currentLevel === LEVEL_IDS.CORN_MAZE || 
+                               currentLevel === LEVEL_IDS.BARN_ESCAPE || 
+                               currentLevel === LEVEL_IDS.WOOD_ESCAPE || 
+                               currentLevel === LEVEL_IDS.SPACE_ESCAPE;
+            
+            // Special handling for stealth bomber - spawn on turkey's horizontal path
+            if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
+                const { minY, maxY } = getTurkeyVerticalBounds();
+                const turkeyY = (minY + maxY) / 2;
+                const candidate = {
+                    x: Math.random() * (BASE_WIDTH - 100) + 50,
+                    y: turkeyY + (Math.random() - 0.5) * 30, // Small variance around turkey's Y
+                    size,
+                    rotation: Math.random() * Math.PI * 2,
+                    bobOffset: Math.random() * Math.PI * 2
+                };
+                apples.push(candidate);
+                return;
+            }
+            
+            // For maze levels, spawn on paths
+            if (isMazeLevel && window.mazePaths && window.mazePaths.length > 0) {
+                // Pick a random path location
+                let attempts = 0;
+                const maxAttempts = 20;
+                while (attempts < maxAttempts) {
+                    const pathIndex = Math.floor(Math.random() * window.mazePaths.length);
+                    const pathCell = window.mazePaths[pathIndex];
+                    // Check that no apple is too close to this path cell
+                    const tooClose = apples.some(a => Math.hypot(a.x - pathCell.x, a.y - pathCell.y) < 60);
+                    if (!tooClose) {
+                        apples.push({
+                            x: pathCell.x + (Math.random() - 0.5) * 20,
+                            y: pathCell.y + (Math.random() - 0.5) * 20,
+                            size,
+                            rotation: Math.random() * Math.PI * 2,
+                            bobOffset: Math.random() * Math.PI * 2
+                        });
+                        return;
+                    }
+                    attempts++;
+                }
+                // Fallback if we can't find a good spot
+                const pathIndex = Math.floor(Math.random() * window.mazePaths.length);
+                const pathCell = window.mazePaths[pathIndex];
+                apples.push({
+                    x: pathCell.x,
+                    y: pathCell.y,
+                    size,
+                    rotation: Math.random() * Math.PI * 2,
+                    bobOffset: Math.random() * Math.PI * 2
+                });
+                return;
+            }
+            
+            // Default spawning for non-maze levels
             let attempts = 0;
             const maxAttempts = 25;
             while (attempts < maxAttempts) {
-                const size = currentLevel === LEVEL_IDS.PARADE ? 32 : 25;
                 const { minY: appleMinY, maxY: appleMaxY } = getAppleSpawnRange();
                 const yRange = Math.max(1, appleMaxY - appleMinY);
                 const candidate = {
@@ -2352,14 +2424,19 @@
             const keyRight = keys['arrowright'] || keys['d'] || keys['ArrowRight'];
             const keyUp = keys['arrowup'] || keys['w'] || keys['ArrowUp'];
             const keyDown = keys['arrowdown'] || keys['s'] || keys['ArrowDown'];
+            
+            // Stealth bomber level: turkey can only move side to side
+            const isBomberLevel = currentLevel === LEVEL_IDS.STEALTH_BOMBER && gameState === 'playing';
 
             if (keyLeft) keyboardDx -= 1;
             if (keyRight) keyboardDx += 1;
-            if (keyUp) keyboardDy -= 1;
-            if (keyDown) keyboardDy += 1;
+            if (!isBomberLevel) {
+                if (keyUp) keyboardDy -= 1;
+                if (keyDown) keyboardDy += 1;
+            }
 
             moveDx = keyboardDx;
-            moveDy = keyboardDy;
+            moveDy = isBomberLevel ? 0 : keyboardDy;
 
             if (touchActive && touchTarget) {
                 const toTargetX = touchTarget.x - turkey.x;
@@ -2368,7 +2445,8 @@
 
                 if (distToTarget > 6) {
                     moveDx = toTargetX / distToTarget;
-                    moveDy = toTargetY / distToTarget;
+                    // For bomber level, only allow horizontal movement
+                    moveDy = isBomberLevel ? 0 : (toTargetY / distToTarget);
                     // Use same speed as keyboard for consistent movement
                     speedMultiplier = 1;
                 } else if (!keyboardDx && !keyboardDy) {
