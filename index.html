@@ -1411,6 +1411,8 @@
                     spawnParticles(boss.x, boss.y, '#FFFAF0', 15);
                     boss = null;
                     levelUp();
+                    updateUI();
+                    return;
                 }
                 
                 updateUI();
@@ -1442,6 +1444,8 @@
                         boss = null;
                         score += 5;
                         levelUp();
+                        updateUI();
+                        return;
                     }
                     
                     updateUI();
