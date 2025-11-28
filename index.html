@@ -557,8 +557,8 @@
             <div class="instructions">
                 Hey feather hero! You just cartwheeled out of the fridge and the mashed potatoes are cheering.<br><br>
                 🍗 Slurp sparkle apples, outrun giggling hunters, and flex so hard the oven faints.<br><br>
-                <span class="desktop-controls">Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move<br>or simply <strong>click & drag</strong> where you want to go<br>Press <strong>SPACE</strong> to peck attack!</span>
-                <span class="mobile-controls">👆 <strong>Touch & hold</strong> anywhere to guide the turkey<br>👆👆 <strong>Double-tap</strong> to peck attack!</span>
+                <span class="desktop-controls">Use <strong>Arrow Keys</strong> or <strong>WASD</strong> to move<br>or simply <strong>click & drag</strong> where you want to go<br>Press <strong>SPACE</strong> or double-click to fire your ability<br><small>(🛡️ shield during bosses, ⚡ dash on other levels)</small></span>
+                <span class="mobile-controls">👆 <strong>Touch & hold</strong> anywhere to guide the turkey<br>👆👆 <strong>Double-tap</strong> to fire your ability (shield vs dash!)</span>
             </div>
             <button class="btn" onclick="startGame()">Start Gobbling!</button>
             <a href="vr.html" style="display: block; margin-top: 20px; color: #DAA520; font-size: 16px; text-decoration: none; opacity: 0.9;">🥽 Try VR Version</a>
@@ -577,7 +577,7 @@
             <div style="font-size: 80px;" id="bossEmoji">🥧</div>
             <h1>Boss Fight!</h1>
             <p class="boss-name" id="bossName">Pumpkin Pie</p>
-            <p class="instructions" id="bossInstructions">The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck from range (<span class="desktop-controls">SPACE</span><span class="mobile-controls">double-tap</span>)<br>🦃 Or just <strong>EAT THE BOSS</strong> directly!</p>
+            <p class="instructions" id="bossInstructions">The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck automatically when you get close enough<br>🛡️ Trigger your Gravy Shield with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>🦃 Or just <strong>EAT THE BOSS</strong> directly!</p>
             <button class="btn" onclick="startBossFight()">Fight!</button>
         </div>
 
@@ -781,6 +781,21 @@
             gravy: { activeTimer: 0, cooldownTimer: 0 },
             cranberry: { activeTimer: 0, cooldownTimer: 0 }
         };
+        function isBossFightActive() {
+            return gameState === 'boss';
+        }
+        function getActiveAbilityKey() {
+            return isBossFightActive() ? 'gravy' : 'cranberry';
+        }
+        function isAbilityEnabled(buffKey) {
+            if (buffKey === 'gravy') {
+                return isBossFightActive();
+            }
+            if (buffKey === 'cranberry') {
+                return !isBossFightActive();
+            }
+            return true;
+        }
         let leftoverUIFrame = 0;
 
         // Input
@@ -790,15 +805,6 @@
         document.addEventListener('keydown', (e) => {
             keys[e.key.toLowerCase()] = true;
             keys[e.code] = true;
-            
-            if (e.key.toLowerCase() === 'q') {
-                e.preventDefault();
-                craftGravyShield();
-            }
-            if (e.key.toLowerCase() === 'e') {
-                e.preventDefault();
-                craftCranberryDash();
-            }
 
             if (e.code === 'Space') {
                 if (gameState === 'levelup') {
@@ -806,11 +812,10 @@
                     continueGame();
                     return;
                 }
-                
-                // Peck attack on space bar
+
                 if (gameState === 'boss' || gameState === 'playing') {
                     e.preventDefault();
-                    tryPeckAttack();
+                    activateContextAbility();
                 }
             }
         });
@@ -923,9 +928,15 @@
             }
         }
 
-        // Double-tap detection for peck attack
+        // Double-press detection for ability activation
         let lastTapTime = 0;
         const DOUBLE_TAP_DELAY = 300; // ms
+
+        canvas.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            if (gameState !== 'playing' && gameState !== 'boss') return;
+            activateContextAbility();
+        });
 
         // Touch events for guiding movement
         canvas.addEventListener('touchstart', (e) => {
@@ -937,7 +948,7 @@
             
             // Check for double-tap
             if (currentTime - lastTapTime < DOUBLE_TAP_DELAY) {
-                tryPeckAttack();
+                activateContextAbility();
                 lastTapTime = 0; // Reset to prevent triple-tap triggering
             } else {
                 lastTapTime = currentTime;
@@ -1021,11 +1032,11 @@
             if (type === BOSS_TYPES.AURORA) {
                 bossEmojiEl.textContent = '🌌';
                 bossNameEl.textContent = 'Northern Light Monster';
-                bossInstructionsEl.innerHTML = 'The Aurora Beast awakens!<br>🍍 Pineapples are your only ammo<br>🌲 Hide behind the glowing trees<br>👊 Peck or lob pineapples after it charges';
+                bossInstructionsEl.innerHTML = 'The Aurora Beast awakens!<br>🍍 Pineapples are your only ammo<br>🌲 Hide behind the glowing trees<br>🛡️ Trigger your Gravy Shield with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>👊 Peck or lob pineapples after it charges';
             } else {
                 bossEmojiEl.textContent = '🥧';
                 bossNameEl.textContent = 'Pumpkin Pie';
-                bossInstructionsEl.innerHTML = 'The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck from range (<span class="desktop-controls">SPACE</span><span class="mobile-controls">double-tap</span>)<br>🦃 Or just <strong>EAT THE BOSS</strong> directly!';
+                bossInstructionsEl.innerHTML = 'The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck automatically when you get close enough<br>🛡️ Trigger your Gravy Shield with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>🦃 Or just <strong>EAT THE BOSS</strong> directly!';
             }
         }
 
@@ -1759,6 +1770,7 @@
             const config = LEFTOVER_CONFIG[buffKey];
             const buffState = leftoverBuffs[buffKey];
             if (!config || !buffState) return false;
+            if (!isAbilityEnabled(buffKey)) return false;
             const affordable = leftoverBuffs.scraps >= config.cost;
             const ready = buffState.activeTimer <= 0 && buffState.cooldownTimer <= 0;
             return affordable && ready;
@@ -1788,28 +1800,46 @@
             updateLeftoverUI('Cranberry dash brewed!');
         }
 
+        function activateContextAbility() {
+            const abilityKey = getActiveAbilityKey();
+            if (abilityKey === 'gravy') {
+                craftGravyShield();
+            } else {
+                craftCranberryDash();
+            }
+        }
+
         function updateLeftoverUI(statusMessage = null) {
             if (!leftoverScrapsEl) return;
             leftoverScrapsEl.textContent = leftoverBuffs.scraps;
 
             if (craftGravyBtn) {
-                craftGravyBtn.disabled = !canUseLeftover('gravy');
+                const showGravy = isBossFightActive();
+                craftGravyBtn.style.display = showGravy ? '' : 'none';
+                craftGravyBtn.disabled = !showGravy || !canUseLeftover('gravy');
                 craftGravyBtn.textContent = `🛡️ Gravy Shield (${LEFTOVER_CONFIG.gravy.cost})`;
             }
             if (craftCranberryBtn) {
-                craftCranberryBtn.disabled = !canUseLeftover('cranberry');
+                const showCranberry = !isBossFightActive();
+                craftCranberryBtn.style.display = showCranberry ? '' : 'none';
+                craftCranberryBtn.disabled = !showCranberry || !canUseLeftover('cranberry');
                 craftCranberryBtn.textContent = `⚡ Cranberry Dash (${LEFTOVER_CONFIG.cranberry.cost})`;
             }
 
             if (!statusMessage) {
-                if (leftoverBuffs.gravy.activeTimer > 0) {
-                    statusMessage = '🛡️ Gravy shield active!';
-                } else if (leftoverBuffs.cranberry.activeTimer > 0) {
-                    statusMessage = '⚡ Cranberry dash active!';
-                } else if (leftoverBuffs.gravy.cooldownTimer > 0 || leftoverBuffs.cranberry.cooldownTimer > 0) {
-                    statusMessage = 'Leftovers cooling down...';
+                const abilityKey = getActiveAbilityKey();
+                const abilityState = leftoverBuffs[abilityKey];
+                const abilityConfig = LEFTOVER_CONFIG[abilityKey];
+                const abilityEmoji = abilityKey === 'gravy' ? '🛡️' : '⚡';
+                const abilityName = abilityKey === 'gravy' ? 'Gravy shield' : 'Cranberry dash';
+                if (abilityState.activeTimer > 0) {
+                    statusMessage = `${abilityEmoji} ${abilityName} active!`;
+                } else if (abilityState.cooldownTimer > 0) {
+                    statusMessage = `${abilityEmoji} ${abilityName} cooling down...`;
+                } else if (leftoverBuffs.scraps >= abilityConfig.cost) {
+                    statusMessage = `${abilityEmoji} ${abilityName} ready!`;
                 } else {
-                    statusMessage = 'Collect treats to cook buffs!';
+                    statusMessage = `Collect treats for ${abilityName}!`;
                 }
             }
             if (leftoverStatusEl) {
@@ -2592,14 +2622,24 @@
             ctx.scale(turkey.direction, 1);
             
             if (leftoverBuffs.gravy.activeTimer > 0) {
-                const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.08;
+                const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.12;
+                const shieldWidth = 60;
+                const shieldHeight = 40;
                 ctx.save();
                 ctx.scale(1 / turkey.direction, 1);
-                ctx.globalAlpha = 0.6;
-                ctx.fillStyle = 'rgba(222,184,135,0.5)';
+                ctx.globalAlpha = 0.7;
+                ctx.fillStyle = 'rgba(222,184,135,0.35)';
                 ctx.beginPath();
-                ctx.ellipse(0, 10, 45 * pulse, 30 * pulse, 0, 0, Math.PI * 2);
+                ctx.ellipse(0, 5, shieldWidth * pulse, shieldHeight * pulse, 0, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = 'rgba(245,222,179,0.8)';
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.ellipse(0, 5, (shieldWidth - 12) * pulse, (shieldHeight - 8) * pulse, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
                 ctx.restore();
             }
             
