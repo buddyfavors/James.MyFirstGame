@@ -945,7 +945,7 @@
         function initBomberLevel() {
             bomber = {
                 x: BASE_WIDTH / 2,
-                y: 190, // Shifted down so it isn't obscured by the UI overlay
+                y: 230, // Slightly lower so it clears the UI overlay
                 width: 160,
                 height: 50,
                 direction: 1,
@@ -954,7 +954,7 @@
                 graceTimer: 180,
                 isReloading: false,
                 reloadTimer: 0,
-                reloadFrames: 1200, // 20 seconds at ~60fps
+                reloadFrames: 600, // 10 seconds at ~60fps
                 activeBomb: null,
                 roundsToSurvive: 3
             };
@@ -2386,9 +2386,6 @@
             drawBackground();
             
             if (gameState === 'playing' || gameState === 'boss') {
-                if (currentLevel === 4 && bomber) {
-                    drawBomber();
-                }
                 drawBarriers(); // Draw barriers behind other elements
                 apples.forEach(drawApple);
                 if (currentLevel === 4) {
@@ -2402,6 +2399,9 @@
                 drawTurkey();
                 if (boss) drawBoss();
                 if (hunter) drawHunter();
+                if (currentLevel === 4 && bomber) {
+                    drawBomber();
+                }
                 drawParticles();
             }
         }
