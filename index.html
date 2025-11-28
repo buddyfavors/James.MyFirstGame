@@ -551,8 +551,8 @@
         <div class="level-up-screen hidden" id="levelUpScreen">
             <div class="turkey-emoji">🦃</div>
             <h1>Level Up!</h1>
-            <p class="level-name" id="newLevelName">Corn Maze</p>
-            <p class="instructions" id="levelDescription">The stalks are alive! Weave the maze and harvest glowing cobs.</p>
+            <p class="level-name" id="newLevelName">Corn Labyrinth</p>
+            <p class="instructions" id="levelDescription">Navigate the twisting corn stalks and find the exit!</p>
             <p class="instructions" id="levelCountdown" aria-live="polite" style="display: none;">Press SPACE or wait 10s for the next level.</p>
             <button class="btn" onclick="continueGame()">Continue</button>
         </div>
@@ -675,13 +675,13 @@
         // Level definitions
         const levels = {
             [LEVEL_IDS.BARN_TURKEY]: { name: 'Barn Turkey', xpNeeded: 10, bgColor: '#8B4513', description: 'Eat apples in the cozy barn!' },
-            [LEVEL_IDS.CORN_MAZE]: { name: 'Corn Maze', xpNeeded: 16, bgColor: '#6b3e12', description: 'Weave through a living corn labyrinth and harvest glowing cobs.' },
+            [LEVEL_IDS.CORN_MAZE]: { name: 'Corn Labyrinth', xpNeeded: 0, bgColor: '#6b3e12', description: 'Navigate the twisting corn stalks and find the glowing exit to escape!', isLabyrinth: true },
             [LEVEL_IDS.PUMPKIN_PIE_BOSS]: { name: 'Pumpkin Pie Boss', xpNeeded: 0, bgColor: '#5D3A1A', description: 'Face the pumpkin pie boss and gobble your way to freedom!' },
-            [LEVEL_IDS.BARN_ESCAPE]: { name: 'Barn Escape', xpNeeded: 18, bgColor: '#228B22', description: 'Sprint across the barnyard fields and stay ahead of the farmers.' },
+            [LEVEL_IDS.BARN_ESCAPE]: { name: 'Barn Labyrinth', xpNeeded: 0, bgColor: '#228B22', description: 'Find your way through the haybale maze and reach the exit!', isLabyrinth: true },
             [LEVEL_IDS.HUNTER_SIEGE]: { name: 'Hunter Boss', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Dodge bullets from the hunter AND nets from his wife! Hide behind cover.' },
-            [LEVEL_IDS.WOOD_ESCAPE]: { name: 'Wood Escape', xpNeeded: 18, bgColor: '#1f2a1c', description: 'Dash through the dark woods, slipping between towering trunks.' },
+            [LEVEL_IDS.WOOD_ESCAPE]: { name: 'Forest Labyrinth', xpNeeded: 0, bgColor: '#1f2a1c', description: 'The dark woods twist and turn. Find the glowing exit to escape!', isLabyrinth: true },
             [LEVEL_IDS.STEALTH_BOMBER]: { name: 'Stealth Bomber Boss', xpNeeded: 3, bgColor: '#0f1a2b', description: 'The runway is exposed. Survive three bombing runs.' },
-            [LEVEL_IDS.SPACE_ESCAPE]: { name: 'Space Escape', xpNeeded: 20, bgColor: '#040c2c', description: 'Launch into the stars atop floating hay satellites and dodge debris.' },
+            [LEVEL_IDS.SPACE_ESCAPE]: { name: 'Space Labyrinth', xpNeeded: 0, bgColor: '#040c2c', description: 'Navigate through the cosmic maze and find the warp gate to escape!', isLabyrinth: true },
             [LEVEL_IDS.NORTHERN_LIGHTS_BOSS]: { name: 'Northern Lights Boss', xpNeeded: 1, bgColor: '#082137', description: 'The aurora beast awakens. Pineapples fuel your survival.' },
             [LEVEL_IDS.PARADE]: { name: 'Victory Parade', xpNeeded: 6, bgColor: '#320b28', description: 'Run through the Thanksgiving parade! Collect treats from the cheering crowd!' }
         };
@@ -1134,6 +1134,7 @@
             bomber = null;
             barriers = [];
             window.mazePaths = []; // Clear maze paths from previous level
+            labyrinthExit = null; // Clear labyrinth exit from previous level
             paradeFloat = null;
             xp = 0;
             bomberRoundsSurvived = 0;
@@ -1559,30 +1560,34 @@
             }
         }
 
-        // Generate Pac-Man style maze for escape levels - full screen
+        // Labyrinth exit zone for escape levels
+        let labyrinthExit = null;
+
+        // Generate labyrinth maze for escape levels - full screen with exit at top
         function generateEscapeMaze(wallType, doorChance = 0.35) {
             barriers = [];
+            labyrinthExit = null;
             
-            // Pac-Man style maze pattern for escape levels (1 = wall, 0 = path)
+            // Labyrinth pattern with exit at top center (1 = wall, 0 = path, 2 = exit)
             const mazePattern = [
-                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-                [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                [1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1],
-                [1,0,0,1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,1],
+                [1,1,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,1,1],
+                [1,0,0,1,0,1,0,0,0,0,0,0,0,1,0,1,0,0,1],
                 [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1],
-                [0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0],
+                [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1],
                 [1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
-                [1,0,0,1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,1],
-                [1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1],
+                [1,0,0,1,0,1,0,0,0,0,0,0,0,1,0,1,0,0,1],
+                [1,1,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,1,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
-                [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
             ];
             
@@ -1605,6 +1610,15 @@
                             solid: true,
                             waveOffset: (row + col) * 0.15
                         });
+                    } else if (mazePattern[row][col] === 2) {
+                        // Exit zone at top center
+                        labyrinthExit = {
+                            x: col * cellWidth + cellWidth / 2,
+                            y: row * cellHeight + cellHeight / 2,
+                            width: cellWidth * 1.5,
+                            height: cellHeight * 1.5,
+                            pulsePhase: 0
+                        };
                     }
                 }
             }
@@ -1621,6 +1635,20 @@
                     }
                 }
             }
+        }
+
+        // Check if turkey reached the labyrinth exit
+        function checkLabyrinthExit() {
+            if (!labyrinthExit) return false;
+            
+            const dist = Math.hypot(turkey.x - labyrinthExit.x, turkey.y - labyrinthExit.y);
+            return dist < labyrinthExit.width / 2 + turkey.width / 3;
+        }
+
+        // Check if current level is a labyrinth level
+        function isLabyrinthLevel() {
+            const levelData = levels[currentLevel];
+            return levelData && levelData.isLabyrinth === true;
         }
 
         // Parade level state
@@ -2295,6 +2323,17 @@
             let needed = xpNeeded;
             let label = 'XP';
 
+            // Labyrinth levels show "Find the Exit" instead of XP progress
+            if (isLabyrinthLevel()) {
+                document.getElementById('xpBar').style.width = '100%';
+                document.getElementById('xpBar').style.background = 'linear-gradient(90deg, #00ff96, #00d4ff, #00ff96)';
+                document.getElementById('xpText').textContent = '🚪 Find the Exit! 🚪';
+                return;
+            } else {
+                // Reset bar color for non-labyrinth levels
+                document.getElementById('xpBar').style.background = '';
+            }
+
             if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
                 filled = bomberRoundsSurvived;
                 needed = (bomber && bomber.roundsToSurvive) || xpNeeded;
@@ -2411,6 +2450,16 @@
             // Clamp position
             clampTurkeyToBounds();
             enforceSolidBarriers();
+
+            // Check if turkey reached labyrinth exit
+            if (isLabyrinthLevel() && gameState === 'playing' && checkLabyrinthExit()) {
+                // Celebrate escape with particles
+                spawnParticles(turkey.x, turkey.y, '#FFD700', 30);
+                spawnParticles(turkey.x, turkey.y, '#00FF00', 20);
+                spawnParticles(labyrinthExit.x, labyrinthExit.y, '#FFFFFF', 25);
+                levelUp();
+                return;
+            }
 
             if (gameState === 'boss' && boss && peckCooldown === 0) {
                 const bossRadius = boss.type === BOSS_TYPES.AURORA ? boss.radius : boss.width / 2;
@@ -4317,6 +4366,91 @@
             });
         }
 
+        // Draw the glowing labyrinth exit
+        function drawLabyrinthExit() {
+            if (!labyrinthExit || !isLabyrinthLevel()) return;
+            
+            ctx.save();
+            ctx.translate(labyrinthExit.x, labyrinthExit.y);
+            
+            // Update pulse animation
+            labyrinthExit.pulsePhase = (labyrinthExit.pulsePhase || 0) + 0.05;
+            const pulse = Math.sin(labyrinthExit.pulsePhase) * 0.3 + 0.7;
+            const outerPulse = Math.sin(labyrinthExit.pulsePhase * 0.5) * 0.2 + 0.8;
+            
+            // Outer glow rings
+            for (let i = 3; i >= 0; i--) {
+                const ringSize = labyrinthExit.width * (1.2 + i * 0.25) * outerPulse;
+                const alpha = (0.15 - i * 0.03) * pulse;
+                ctx.beginPath();
+                ctx.arc(0, 0, ringSize / 2, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 255, 150, ${alpha})`;
+                ctx.fill();
+            }
+            
+            // Main exit portal - different style based on level
+            const exitSize = labyrinthExit.width * 0.8;
+            
+            // Swirling portal effect
+            const time = Date.now() * 0.002;
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, exitSize / 2);
+            
+            if (currentLevel === LEVEL_IDS.SPACE_ESCAPE) {
+                // Space warp gate - purple/blue
+                gradient.addColorStop(0, `rgba(200, 150, 255, ${pulse})`);
+                gradient.addColorStop(0.5, `rgba(100, 50, 200, ${pulse * 0.8})`);
+                gradient.addColorStop(1, `rgba(50, 0, 100, ${pulse * 0.5})`);
+            } else if (currentLevel === LEVEL_IDS.WOOD_ESCAPE) {
+                // Forest exit - green/gold
+                gradient.addColorStop(0, `rgba(200, 255, 150, ${pulse})`);
+                gradient.addColorStop(0.5, `rgba(100, 200, 50, ${pulse * 0.8})`);
+                gradient.addColorStop(1, `rgba(50, 100, 0, ${pulse * 0.5})`);
+            } else if (currentLevel === LEVEL_IDS.BARN_ESCAPE) {
+                // Barn exit - golden/orange
+                gradient.addColorStop(0, `rgba(255, 230, 150, ${pulse})`);
+                gradient.addColorStop(0.5, `rgba(255, 180, 50, ${pulse * 0.8})`);
+                gradient.addColorStop(1, `rgba(180, 100, 0, ${pulse * 0.5})`);
+            } else {
+                // Corn labyrinth - yellow/green
+                gradient.addColorStop(0, `rgba(255, 255, 150, ${pulse})`);
+                gradient.addColorStop(0.5, `rgba(200, 220, 50, ${pulse * 0.8})`);
+                gradient.addColorStop(1, `rgba(100, 150, 0, ${pulse * 0.5})`);
+            }
+            
+            ctx.beginPath();
+            ctx.arc(0, 0, exitSize / 2, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // Swirl lines
+            ctx.strokeStyle = `rgba(255, 255, 255, ${pulse * 0.6})`;
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 4; i++) {
+                ctx.beginPath();
+                const startAngle = time + i * Math.PI / 2;
+                ctx.arc(0, 0, exitSize * 0.3, startAngle, startAngle + Math.PI * 0.5);
+                ctx.stroke();
+            }
+            
+            // Exit arrow pointing up
+            ctx.fillStyle = `rgba(255, 255, 255, ${pulse})`;
+            ctx.beginPath();
+            ctx.moveTo(0, -exitSize * 0.25);
+            ctx.lineTo(-exitSize * 0.15, exitSize * 0.05);
+            ctx.lineTo(exitSize * 0.15, exitSize * 0.05);
+            ctx.closePath();
+            ctx.fill();
+            
+            // "EXIT" text
+            ctx.fillStyle = `rgba(255, 255, 255, ${pulse})`;
+            ctx.font = 'bold 14px Fraunces';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('EXIT', 0, exitSize * 0.2);
+            
+            ctx.restore();
+        }
+
         function drawBomber() {
             if (!bomber) return;
             ctx.save();
@@ -4609,6 +4743,7 @@
             
             if (gameState === 'playing' || gameState === 'boss') {
                 drawBarriers(); // Draw barriers behind other elements
+                drawLabyrinthExit(); // Draw exit portal for labyrinth levels
                 apples.forEach(drawApple);
                 if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
                     drawBomberBombs();
