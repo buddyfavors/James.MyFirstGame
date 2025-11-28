@@ -680,12 +680,12 @@
             [LEVEL_IDS.CORN_MAZE]: { name: 'Corn Maze', xpNeeded: 16, bgColor: '#6b3e12', description: 'Weave through a living corn labyrinth and harvest glowing cobs.' },
             [LEVEL_IDS.PUMPKIN_PIE_BOSS]: { name: 'Pumpkin Pie Boss', xpNeeded: 0, bgColor: '#5D3A1A', description: 'Face the pumpkin pie boss and gobble your way to freedom!' },
             [LEVEL_IDS.BARN_ESCAPE]: { name: 'Barn Escape', xpNeeded: 18, bgColor: '#228B22', description: 'Sprint across the barnyard fields and stay ahead of the farmers.' },
-            [LEVEL_IDS.HUNTER_SIEGE]: { name: 'Hunter Boss', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Hide behind hay bales and rocks while the hunter reloads.' },
+            [LEVEL_IDS.HUNTER_SIEGE]: { name: 'Hunter Boss', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Dodge bullets from the hunter AND nets from his wife! Hide behind cover.' },
             [LEVEL_IDS.WOOD_ESCAPE]: { name: 'Wood Escape', xpNeeded: 18, bgColor: '#1f2a1c', description: 'Dash through the dark woods, slipping between towering trunks.' },
             [LEVEL_IDS.STEALTH_BOMBER]: { name: 'Stealth Bomber Boss', xpNeeded: 3, bgColor: '#0f1a2b', description: 'The runway is exposed. Survive three bombing runs.' },
             [LEVEL_IDS.SPACE_ESCAPE]: { name: 'Space Escape', xpNeeded: 20, bgColor: '#040c2c', description: 'Launch into the stars atop floating hay satellites and dodge debris.' },
             [LEVEL_IDS.NORTHERN_LIGHTS_BOSS]: { name: 'Northern Lights Boss', xpNeeded: 1, bgColor: '#082137', description: 'The aurora beast awakens. Pineapples fuel your survival.' },
-            [LEVEL_IDS.PARADE]: { name: 'Parade', xpNeeded: 6, bgColor: '#320b28', description: 'Collect float parts and assemble the victory parade!' }
+            [LEVEL_IDS.PARADE]: { name: 'Victory Parade', xpNeeded: 6, bgColor: '#320b28', description: 'Run through the Thanksgiving parade! Collect treats from the cheering crowd!' }
         };
         const MAX_LEVEL = Object.keys(levels).length;
 
@@ -1122,6 +1122,9 @@
             apples = [];
             particles = [];
             paradeConfetti = [];
+            paradeFloats = [];
+            paradeBalloons = [];
+            paradeSpectators = [];
             bossProjectiles = [];
             bomberBombs = [];
             auroraWaves = [];
@@ -1535,32 +1538,34 @@
 
         function spawnCornMazeLevel() {
             barriers = [];
-            // Pac-Man style maze layout
-            const cellSize = 60;
-            const cols = Math.floor(BASE_WIDTH / cellSize);
-            const rows = Math.floor(BASE_HEIGHT / cellSize);
-            const wallThickness = 20;
+            // Maze with clear paths along all edges (at least 2x turkey width = 120px)
+            const edgeMargin = 130; // Clear path along edges
+            const wallThickness = 22;
             
-            // Define Pac-Man style maze grid (1 = wall, 0 = path)
-            // Classic Pac-Man inspired layout with corridors
+            // Interior maze pattern - no walls near edges
+            // Layout creates interesting paths while keeping edges clear
             const mazePattern = [
-                [1,1,1,1,1,1,1,1,1,1],
-                [1,0,0,0,0,0,0,0,0,1],
-                [1,0,1,1,0,1,1,1,0,1],
-                [1,0,1,0,0,0,0,1,0,1],
-                [1,0,0,0,1,1,0,0,0,1],
-                [1,0,1,0,0,0,0,1,0,1],
-                [1,0,1,1,0,1,1,1,0,1],
-                [1,0,0,0,0,0,0,0,0,1],
-                [1,1,1,0,1,1,0,1,1,1],
-                [1,0,0,0,0,0,0,0,0,1],
-                [1,1,1,1,1,1,1,1,1,1]
+                [0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,1,1,0,0,1,1,1,0,0,0],
+                [0,0,1,0,0,0,0,0,1,0,0,0],
+                [0,0,0,0,1,1,0,0,0,0,0,0],
+                [0,0,1,0,0,0,0,1,0,0,0,0],
+                [0,0,1,1,0,1,1,1,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,1,0,1,1,0,1,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0]
             ];
             
             const patternRows = mazePattern.length;
             const patternCols = mazePattern[0].length;
-            const scaleX = BASE_WIDTH / patternCols;
-            const scaleY = (BASE_HEIGHT - 100) / patternRows; // Leave space at bottom for start
+            
+            // Calculate scale to fit interior area (excluding edge margins)
+            const interiorWidth = BASE_WIDTH - (edgeMargin * 2);
+            const interiorHeight = BASE_HEIGHT - (edgeMargin * 2) - 50; // Extra space at bottom
+            const scaleX = interiorWidth / patternCols;
+            const scaleY = interiorHeight / patternRows;
             
             for (let row = 0; row < patternRows; row++) {
                 for (let col = 0; col < patternCols; col++) {
@@ -1577,11 +1582,11 @@
                             vLength++;
                         }
                         
-                        // Create wall segment
+                        // Create wall segment - offset by edge margin
                         if (hLength >= vLength && hLength > 1) {
                             barriers.push({
-                                x: col * scaleX + (hLength * scaleX) / 2,
-                                y: row * scaleY + scaleY / 2 + 30,
+                                x: edgeMargin + col * scaleX + (hLength * scaleX) / 2,
+                                y: edgeMargin + row * scaleY + scaleY / 2,
                                 width: hLength * scaleX - 10,
                                 height: wallThickness,
                                 type: 'cornWall',
@@ -1594,8 +1599,8 @@
                             }
                         } else if (mazePattern[row][col] === 1) {
                             barriers.push({
-                                x: col * scaleX + scaleX / 2,
-                                y: row * scaleY + (vLength * scaleY) / 2 + 30,
+                                x: edgeMargin + col * scaleX + scaleX / 2,
+                                y: edgeMargin + row * scaleY + (vLength * scaleY) / 2,
                                 width: wallThickness,
                                 height: vLength * scaleY - 10,
                                 type: 'cornWall',
@@ -1613,162 +1618,36 @@
         }
         
         // Generate random maze pattern for escape levels with door openings
+        // No outer walls - paths along edges are always clear (2x turkey width)
         function generateEscapeMaze(wallType, doorChance = 0.35) {
             barriers = [];
-            const cellSize = 80;
-            const cols = Math.floor(BASE_WIDTH / cellSize);
-            const rows = Math.floor(BASE_HEIGHT / cellSize);
             const wallThickness = 22;
-            // Door opening must be wide enough for the turkey to fit through (turkey width is 60px default, 48px in maze)
-            const minDoorWidth = 85;
+            // Edge margin: at least 2x turkey width (turkey is 60px, so 120px minimum)
+            const edgeMargin = 130;
+            // Door opening must be wide enough for the turkey to fit through
+            const minDoorWidth = 100;
             
-            // Create complete outer walls with door openings on all four sides
-            
-            // TOP WALL - complete with 1-2 door openings
-            const topDoorCount = 1 + Math.floor(Math.random() * 2);
-            const topDoorPositions = [];
-            for (let d = 0; d < topDoorCount; d++) {
-                topDoorPositions.push(BASE_WIDTH * (0.3 + d * 0.4) + (Math.random() - 0.5) * 80);
-            }
-            topDoorPositions.sort((a, b) => a - b);
-            
-            let x = 0;
-            for (let doorIdx = 0; doorIdx <= topDoorPositions.length; doorIdx++) {
-                const doorX = doorIdx < topDoorPositions.length ? topDoorPositions[doorIdx] : BASE_WIDTH;
-                const segmentEnd = doorX - minDoorWidth / 2;
-                if (segmentEnd > x) {
-                    barriers.push({
-                        x: (x + segmentEnd) / 2,
-                        y: 40,
-                        width: segmentEnd - x,
-                        height: wallThickness,
-                        type: wallType,
-                        solid: true,
-                        waveOffset: x * 0.01
-                    });
-                }
-                x = doorX + minDoorWidth / 2;
-            }
-            
-            // BOTTOM WALL - complete with 1-2 door openings
-            const bottomDoorCount = 1 + Math.floor(Math.random() * 2);
-            const bottomDoorPositions = [];
-            for (let d = 0; d < bottomDoorCount; d++) {
-                bottomDoorPositions.push(BASE_WIDTH * (0.3 + d * 0.4) + (Math.random() - 0.5) * 80);
-            }
-            bottomDoorPositions.sort((a, b) => a - b);
-            
-            x = 0;
-            for (let doorIdx = 0; doorIdx <= bottomDoorPositions.length; doorIdx++) {
-                const doorX = doorIdx < bottomDoorPositions.length ? bottomDoorPositions[doorIdx] : BASE_WIDTH;
-                const segmentEnd = doorX - minDoorWidth / 2;
-                if (segmentEnd > x) {
-                    barriers.push({
-                        x: (x + segmentEnd) / 2,
-                        y: BASE_HEIGHT - 50,
-                        width: segmentEnd - x,
-                        height: wallThickness,
-                        type: wallType,
-                        solid: true,
-                        waveOffset: x * 0.01
-                    });
-                }
-                x = doorX + minDoorWidth / 2;
-            }
-            
-            // LEFT WALL - complete with 1-2 door openings
-            const leftDoorCount = 1 + Math.floor(Math.random() * 2);
-            const leftDoorPositions = [];
-            for (let d = 0; d < leftDoorCount; d++) {
-                leftDoorPositions.push(BASE_HEIGHT * (0.25 + d * 0.35) + (Math.random() - 0.5) * 60);
-            }
-            leftDoorPositions.sort((a, b) => a - b);
-            
-            let y = 60; // Start below top wall
-            for (let doorIdx = 0; doorIdx <= leftDoorPositions.length; doorIdx++) {
-                const doorY = doorIdx < leftDoorPositions.length ? leftDoorPositions[doorIdx] : BASE_HEIGHT - 70;
-                const segmentEnd = doorY - minDoorWidth / 2;
-                if (segmentEnd > y) {
-                    barriers.push({
-                        x: 15,
-                        y: (y + segmentEnd) / 2,
-                        width: wallThickness,
-                        height: segmentEnd - y,
-                        type: wallType,
-                        solid: true,
-                        waveOffset: y * 0.01
-                    });
-                }
-                y = doorY + minDoorWidth / 2;
-            }
-            // Final segment to bottom
-            if (y < BASE_HEIGHT - 70) {
-                barriers.push({
-                    x: 15,
-                    y: (y + BASE_HEIGHT - 70) / 2,
-                    width: wallThickness,
-                    height: BASE_HEIGHT - 70 - y,
-                    type: wallType,
-                    solid: true,
-                    waveOffset: y * 0.01
-                });
-            }
-            
-            // RIGHT WALL - complete with 1-2 door openings
-            const rightDoorCount = 1 + Math.floor(Math.random() * 2);
-            const rightDoorPositions = [];
-            for (let d = 0; d < rightDoorCount; d++) {
-                rightDoorPositions.push(BASE_HEIGHT * (0.25 + d * 0.35) + (Math.random() - 0.5) * 60);
-            }
-            rightDoorPositions.sort((a, b) => a - b);
-            
-            y = 60; // Start below top wall
-            for (let doorIdx = 0; doorIdx <= rightDoorPositions.length; doorIdx++) {
-                const doorY = doorIdx < rightDoorPositions.length ? rightDoorPositions[doorIdx] : BASE_HEIGHT - 70;
-                const segmentEnd = doorY - minDoorWidth / 2;
-                if (segmentEnd > y) {
-                    barriers.push({
-                        x: BASE_WIDTH - 15,
-                        y: (y + segmentEnd) / 2,
-                        width: wallThickness,
-                        height: segmentEnd - y,
-                        type: wallType,
-                        solid: true,
-                        waveOffset: y * 0.01
-                    });
-                }
-                y = doorY + minDoorWidth / 2;
-            }
-            // Final segment to bottom
-            if (y < BASE_HEIGHT - 70) {
-                barriers.push({
-                    x: BASE_WIDTH - 15,
-                    y: (y + BASE_HEIGHT - 70) / 2,
-                    width: wallThickness,
-                    height: BASE_HEIGHT - 70 - y,
-                    type: wallType,
-                    solid: true,
-                    waveOffset: y * 0.01
-                });
-            }
+            // NO OUTER WALLS - edges are always clear for movement
             
             // Interior maze walls - horizontal rows with random gaps (doors wide enough for turkey)
+            // Keep all interior walls away from screen edges
             const rowYPositions = [
-                BASE_HEIGHT * 0.25,
-                BASE_HEIGHT * 0.45,
-                BASE_HEIGHT * 0.65,
-                BASE_HEIGHT * 0.85
+                BASE_HEIGHT * 0.28,
+                BASE_HEIGHT * 0.48,
+                BASE_HEIGHT * 0.68
             ];
             
             rowYPositions.forEach((rowY, rowIndex) => {
                 // Create segments with gaps (doors) wide enough for turkey
-                const numSegments = 3 + Math.floor(Math.random() * 2);
-                const gapWidth = minDoorWidth + Math.random() * 20; // Door width at least minDoorWidth
+                // Start and end segments away from edges
+                const numSegments = 2 + Math.floor(Math.random() * 2);
+                const gapWidth = minDoorWidth + Math.random() * 30;
                 const totalGaps = numSegments - 1;
                 const totalGapWidth = gapWidth * totalGaps;
-                const segmentWidth = (BASE_WIDTH - totalGapWidth - 80) / numSegments;
+                const availableWidth = BASE_WIDTH - (edgeMargin * 2);
+                const segmentWidth = (availableWidth - totalGapWidth) / numSegments;
                 
-                let currentX = 40;
+                let currentX = edgeMargin;
                 for (let i = 0; i < numSegments; i++) {
                     barriers.push({
                         x: currentX + segmentWidth / 2,
@@ -1783,12 +1662,12 @@
                 }
             });
             
-            // Add some vertical wall segments with random placement
-            const numVerticals = 2 + Math.floor(Math.random() * 3);
+            // Add some vertical wall segments - but keep them away from edges
+            const numVerticals = 2 + Math.floor(Math.random() * 2);
             for (let i = 0; i < numVerticals; i++) {
-                const vX = 100 + Math.random() * (BASE_WIDTH - 200);
-                const vY = 120 + Math.random() * (BASE_HEIGHT - 300);
-                const vHeight = 80 + Math.random() * 100;
+                const vX = edgeMargin + 50 + Math.random() * (BASE_WIDTH - edgeMargin * 2 - 100);
+                const vY = edgeMargin + 50 + Math.random() * (BASE_HEIGHT - edgeMargin * 2 - 200);
+                const vHeight = 60 + Math.random() * 80;
                 
                 barriers.push({
                     x: vX,
@@ -1802,98 +1681,157 @@
             }
         }
 
+        // Parade level state
+        let paradeFloats = [];
+        let paradeBalloons = [];
+        let paradeSpectators = [];
+        
         function initParadeFloatBuilder() {
             paradeFloat = {
                 partsBuilt: 0,
                 partsRequired: levels[LEVEL_IDS.PARADE].xpNeeded,
                 stage: 0,
-                stageLabels: ['Chassis', 'Balloon Rigging', 'Light Show', 'Music Stack', 'Final Touches'],
-                status: 'Collect float parts scattered across the runway!'
+                stageLabels: ['🎺 Drum Major', '🎷 Brass Section', '🥁 Percussion', '🎭 Dance Troupe', '🎪 Grand Finale', '🏆 VICTORY!'],
+                status: 'The crowd goes wild! Collect celebration treats!'
             };
             paradeConfetti = [];
+            
+            // Initialize parade floats moving across screen
+            paradeFloats = [
+                { x: -100, y: BASE_HEIGHT - 180, type: 'turkeyFloat', speed: 0.8, width: 120, height: 100 },
+                { x: BASE_WIDTH + 200, y: BASE_HEIGHT - 160, type: 'pilgrimFloat', speed: -0.6, width: 100, height: 80 }
+            ];
+            
+            // Initialize floating balloons
+            paradeBalloons = [];
+            for (let i = 0; i < 8; i++) {
+                paradeBalloons.push({
+                    x: Math.random() * BASE_WIDTH,
+                    y: Math.random() * BASE_HEIGHT * 0.6 + 50,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: -0.3 - Math.random() * 0.3,
+                    size: 25 + Math.random() * 20,
+                    color: ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181', '#AA96DA'][i % 6],
+                    wobble: Math.random() * Math.PI * 2
+                });
+            }
+            
+            // Initialize cheering spectators on sides
+            paradeSpectators = [];
+            for (let i = 0; i < 12; i++) {
+                // Left side spectators
+                paradeSpectators.push({
+                    x: 30 + Math.random() * 60,
+                    y: 150 + i * 50,
+                    armPhase: Math.random() * Math.PI * 2,
+                    color: ['#FF6347', '#4169E1', '#32CD32', '#FFD700', '#FF69B4'][i % 5]
+                });
+                // Right side spectators
+                paradeSpectators.push({
+                    x: BASE_WIDTH - 30 - Math.random() * 60,
+                    y: 150 + i * 50,
+                    armPhase: Math.random() * Math.PI * 2 + Math.PI,
+                    color: ['#FF6347', '#4169E1', '#32CD32', '#FFD700', '#FF69B4'][(i + 2) % 5]
+                });
+            }
+            
+            // Spawn confetti continuously
+            for (let i = 0; i < 30; i++) {
+                spawnConfettiBurst(Math.random() * BASE_WIDTH, -20);
+            }
         }
 
         function incrementParadeFloat() {
             if (!paradeFloat) return;
             paradeFloat.partsBuilt++;
-            paradeFloat.stage = Math.min(paradeFloat.stageLabels.length - 1, paradeFloat.partsBuilt - 1);
+            paradeFloat.stage = Math.min(paradeFloat.stageLabels.length - 1, paradeFloat.partsBuilt);
             const remaining = Math.max(0, paradeFloat.partsRequired - paradeFloat.partsBuilt);
             paradeFloat.status = remaining > 0
-                ? `${paradeFloat.stageLabels[paradeFloat.stage]} complete! ${remaining} parts left.`
-                : 'Float ready! Return to center!';
+                ? `${paradeFloat.stageLabels[paradeFloat.stage]} - ${remaining} more treats!`
+                : '🏆 PARADE CHAMPION! 🏆';
+            
+            // Big celebration burst
             spawnConfettiBurst(turkey.x, turkey.y);
+            spawnConfettiBurst(turkey.x - 50, turkey.y - 30);
+            spawnConfettiBurst(turkey.x + 50, turkey.y - 30);
         }
 
         function spawnConfettiBurst(x, y) {
-            for (let i = 0; i < 25; i++) {
+            const colors = ['#ff69b4', '#ffd700', '#7fffd4', '#ff7f50', '#00ff7f', '#ff1493', '#00bfff', '#ff4500'];
+            for (let i = 0; i < 15; i++) {
                 paradeConfetti.push({
                     x,
                     y,
-                    vx: (Math.random() - 0.5) * 6,
-                    vy: -Math.random() * 4 - 2,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: -Math.random() * 5 - 1,
                     life: 1,
-                    color: ['#ff69b4', '#ffd700', '#7fffd4', '#ff7f50'][i % 4]
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    rotation: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 0.3,
+                    size: 4 + Math.random() * 4
                 });
             }
         }
 
         function updateParadeConfetti() {
+            // Update existing confetti
             for (let i = paradeConfetti.length - 1; i >= 0; i--) {
                 const confetti = paradeConfetti[i];
                 confetti.x += confetti.vx;
                 confetti.y += confetti.vy;
-                confetti.vy += 0.12;
-                confetti.life -= 0.02;
-                if (confetti.life <= 0 || confetti.y > BASE_HEIGHT) {
+                confetti.vy += 0.08;
+                confetti.vx *= 0.99;
+                confetti.rotation = (confetti.rotation || 0) + (confetti.rotSpeed || 0);
+                confetti.life -= 0.008;
+                if (confetti.life <= 0 || confetti.y > BASE_HEIGHT + 50) {
                     paradeConfetti.splice(i, 1);
                 }
+            }
+            
+            // Only spawn new confetti if we're in the parade level
+            if (currentLevel === LEVEL_IDS.PARADE && gameState === 'playing') {
+                // Continuously spawn confetti from top
+                if (Math.random() < 0.15) {
+                    spawnConfettiBurst(Math.random() * BASE_WIDTH, -10);
+                }
+                
+                // Update parade floats
+                paradeFloats.forEach(float => {
+                    float.x += float.speed;
+                    // Wrap around
+                    if (float.speed > 0 && float.x > BASE_WIDTH + 150) {
+                        float.x = -150;
+                    } else if (float.speed < 0 && float.x < -150) {
+                        float.x = BASE_WIDTH + 150;
+                    }
+                });
+                
+                // Update balloons
+                paradeBalloons.forEach(balloon => {
+                    balloon.x += balloon.vx + Math.sin(balloon.wobble) * 0.3;
+                    balloon.y += balloon.vy;
+                    balloon.wobble += 0.03;
+                    
+                    // Wrap around
+                    if (balloon.y < -50) {
+                        balloon.y = BASE_HEIGHT + 50;
+                        balloon.x = Math.random() * BASE_WIDTH;
+                    }
+                    if (balloon.x < -50) balloon.x = BASE_WIDTH + 50;
+                    if (balloon.x > BASE_WIDTH + 50) balloon.x = -50;
+                });
+                
+                // Update spectators (waving arms)
+                paradeSpectators.forEach(spec => {
+                    spec.armPhase += 0.1;
+                });
             }
         }
 
         function spawnParadeWorkshop() {
             barriers = [];
-            const stage = {
-                x: BASE_WIDTH / 2,
-                y: BASE_HEIGHT - 140,
-                width: 260,
-                height: 60,
-                type: 'floatStage',
-                solid: false
-            };
-            barriers.push(stage);
-
-            const balloonStacks = [
-                { x: BASE_WIDTH / 2 - 200, y: BASE_HEIGHT - 200 },
-                { x: BASE_WIDTH / 2 + 200, y: BASE_HEIGHT - 200 }
-            ];
-
-            balloonStacks.forEach(stack => {
-                barriers.push({
-                    x: stack.x,
-                    y: stack.y,
-                    width: 60,
-                    height: 140,
-                    type: 'balloonStack',
-                    solid: false
-                });
-            });
-
-            const railings = [
-                { x: BASE_WIDTH / 2, y: BASE_HEIGHT - 220 },
-                { x: BASE_WIDTH / 2, y: BASE_HEIGHT - 260 }
-            ];
-
-            railings.forEach((rail, index) => {
-                barriers.push({
-                    x: rail.x,
-                    y: rail.y,
-                    width: BASE_WIDTH - 120,
-                    height: 14,
-                    type: 'workshopRail',
-                    solid: false,
-                    waveOffset: index * 0.3
-                });
-            });
+            // No solid barriers in parade - it's an open celebration!
+            // The parade route is clear for running
         }
 
         function initBomberLevel() {
@@ -2534,9 +2472,12 @@
                 }
             }
 
-            // Update hunter (level 3) - Hunter stays in center but still shoots
+            // Update hunter (level 3) - Hunter on left side shoots at turkey
             if (hunter && gameState === 'playing') {
-                // Hunter stays in place - no movement code
+                // Update animations
+                hunter.breathePhase += 0.03;
+                hunter.animPhase += 0.05;
+                if (hunter.muzzleFlash > 0) hunter.muzzleFlash--;
 
                 // Grace period at the start - hunter doesn't shoot immediately
                 if (hunter.graceTimer > 0) {
@@ -2553,15 +2494,32 @@
                 } else {
                     // Hunter can shoot - fires 3 shots then reloads
                     hunter.shootTimer++;
-                    if (hunter.shootTimer > 60) { // Slightly faster between shots in burst
+                    if (hunter.shootTimer > 50) { // Slightly faster between shots in burst
                         hunter.shootTimer = 0;
                         const angle = Math.atan2(turkey.y - hunter.y, turkey.x - hunter.x);
+                        
+                        // Muzzle flash effect
+                        hunter.muzzleFlash = 10;
+                        
+                        // Spawn muzzle particles
+                        for (let p = 0; p < 5; p++) {
+                            particles.push({
+                                x: hunter.x + 35,
+                                y: hunter.y - 5,
+                                vx: Math.cos(angle) * (3 + Math.random() * 2) + (Math.random() - 0.5),
+                                vy: Math.sin(angle) * (3 + Math.random() * 2) + (Math.random() - 0.5),
+                                life: 0.5,
+                                color: ['#FF4500', '#FFD700', '#FF6347'][p % 3],
+                                size: 4 + Math.random() * 3
+                            });
+                        }
+                        
                         bossProjectiles.push({
-                            x: hunter.x,
-                            y: hunter.y,
-                            vx: Math.cos(angle) * 7,
-                            vy: Math.sin(angle) * 7,
-                            size: 15,
+                            x: hunter.x + 35,
+                            y: hunter.y - 5,
+                            vx: Math.cos(angle) * 8,
+                            vy: Math.sin(angle) * 8,
+                            size: 12,
                             isHunter: true,
                             type: 'bullet',
                             onHitMessage: 'You got shot!'
@@ -2574,7 +2532,24 @@
                         }
                     }
                 }
-
+            }
+            
+            // Update hunter's wife and thrown nets
+            if (hunterWife && currentLevel === LEVEL_IDS.HUNTER_SIEGE && gameState === 'playing') {
+                updateHunterWife();
+                updateThrownNets();
+                
+                // Check net collisions with turkey
+                for (let i = thrownNets.length - 1; i >= 0; i--) {
+                    const net = thrownNets[i];
+                    const dist = Math.hypot(turkey.x - net.x, turkey.y - net.y);
+                    if (dist < turkey.width / 2 + net.size / 3) {
+                        if (handleTurkeyDamage('Caught in a net!')) {
+                            return;
+                        }
+                        thrownNets.splice(i, 1);
+                    }
+                }
             }
 
             if (currentLevel === LEVEL_IDS.STEALTH_BOMBER && gameState === 'playing') {
@@ -3085,34 +3060,165 @@
                     break;
                 }
                 case LEVEL_IDS.PARADE: {
-                    gradient.addColorStop(0, '#1a0633');
-                    gradient.addColorStop(0.5, '#2f0d2a');
-                    gradient.addColorStop(1, '#000000');
+                    // Festive parade sky
+                    gradient.addColorStop(0, '#1a237e');
+                    gradient.addColorStop(0.3, '#283593');
+                    gradient.addColorStop(0.7, '#3949ab');
+                    gradient.addColorStop(1, '#5c6bc0');
                     ctx.fillStyle = gradient;
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     
-                    // city skyline
-                    ctx.fillStyle = '#0d0314';
-                    for (let i = 0; i < 8; i++) {
-                        const width = 50 + (i * 13 % 50);
-                        const height = 120 + (i * 37 % 90);
-                        ctx.fillRect(i * 80, canvas.height - 120 - height, width, height);
-                        ctx.fillStyle = '#14041f';
-                    }
+                    // City skyline with lit windows
+                    const buildings = [
+                        { x: 0, w: 60, h: 180 },
+                        { x: 55, w: 45, h: 140 },
+                        { x: 95, w: 70, h: 220 },
+                        { x: canvas.width - 150, w: 50, h: 160 },
+                        { x: canvas.width - 105, w: 60, h: 200 },
+                        { x: canvas.width - 50, w: 55, h: 170 }
+                    ];
+                    buildings.forEach(b => {
+                        ctx.fillStyle = '#1a1a3e';
+                        ctx.fillRect(b.x, canvas.height - b.h - 60, b.w, b.h);
+                        // Lit windows
+                        ctx.fillStyle = '#FFD700';
+                        for (let wy = 0; wy < b.h - 20; wy += 25) {
+                            for (let wx = 8; wx < b.w - 8; wx += 15) {
+                                if (Math.random() > 0.3) {
+                                    ctx.fillRect(b.x + wx, canvas.height - b.h - 60 + wy + 10, 8, 12);
+                                }
+                            }
+                        }
+                    });
                     
-                    // spotlight beams
-                    ctx.globalAlpha = 0.15;
-                    ctx.fillStyle = '#ffd700';
-                    ctx.beginPath();
-                    ctx.moveTo(canvas.width / 2 - 100, canvas.height);
-                    ctx.lineTo(canvas.width / 2 - 30, canvas.height - 300);
-                    ctx.lineTo(canvas.width / 2 + 40, canvas.height);
-                    ctx.closePath();
-                    ctx.fill();
+                    // Multiple spotlight beams sweeping
+                    const time = Date.now() * 0.001;
+                    for (let s = 0; s < 3; s++) {
+                        ctx.globalAlpha = 0.12;
+                        ctx.fillStyle = ['#ffd700', '#ff69b4', '#00bfff'][s];
+                        ctx.beginPath();
+                        const baseX = canvas.width * (0.25 + s * 0.25);
+                        const sweep = Math.sin(time + s * 2) * 100;
+                        ctx.moveTo(baseX + sweep - 40, canvas.height);
+                        ctx.lineTo(baseX, 50);
+                        ctx.lineTo(baseX + sweep + 40, canvas.height);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
                     ctx.globalAlpha = 1;
                     
-                    ctx.fillStyle = '#2b0b1d';
-                    ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+                    // Parade route barriers on sides (crowd areas)
+                    ctx.fillStyle = '#8B0000';
+                    ctx.fillRect(0, 100, 80, canvas.height - 160);
+                    ctx.fillRect(canvas.width - 80, 100, 80, canvas.height - 160);
+                    
+                    // Parade street
+                    ctx.fillStyle = '#2d2d2d';
+                    ctx.fillRect(80, canvas.height - 80, canvas.width - 160, 80);
+                    
+                    // Street markings
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(canvas.width / 2 - 5, canvas.height - 75, 10, 70);
+                    
+                    // Draw balloons in background
+                    if (paradeBalloons) {
+                        paradeBalloons.forEach(balloon => {
+                            ctx.fillStyle = balloon.color;
+                            ctx.globalAlpha = 0.8;
+                            ctx.beginPath();
+                            ctx.ellipse(balloon.x, balloon.y, balloon.size * 0.7, balloon.size, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            // Balloon string
+                            ctx.strokeStyle = '#666';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(balloon.x, balloon.y + balloon.size);
+                            ctx.quadraticCurveTo(balloon.x + Math.sin(balloon.wobble) * 10, balloon.y + balloon.size + 30, balloon.x, balloon.y + balloon.size + 50);
+                            ctx.stroke();
+                            // Balloon shine
+                            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                            ctx.beginPath();
+                            ctx.ellipse(balloon.x - balloon.size * 0.2, balloon.y - balloon.size * 0.3, balloon.size * 0.15, balloon.size * 0.2, -0.5, 0, Math.PI * 2);
+                            ctx.fill();
+                        });
+                        ctx.globalAlpha = 1;
+                    }
+                    
+                    // Draw spectators on the sides
+                    if (paradeSpectators) {
+                        paradeSpectators.forEach(spec => {
+                            ctx.fillStyle = spec.color;
+                            // Body
+                            ctx.fillRect(spec.x - 8, spec.y, 16, 25);
+                            // Head
+                            ctx.fillStyle = '#DEB887';
+                            ctx.beginPath();
+                            ctx.arc(spec.x, spec.y - 8, 10, 0, Math.PI * 2);
+                            ctx.fill();
+                            // Waving arm
+                            ctx.strokeStyle = '#DEB887';
+                            ctx.lineWidth = 4;
+                            ctx.beginPath();
+                            const armY = spec.y + 5;
+                            const armExtend = Math.sin(spec.armPhase) * 15;
+                            ctx.moveTo(spec.x, armY);
+                            ctx.lineTo(spec.x + (spec.x < canvas.width / 2 ? 15 : -15), armY - 10 + armExtend);
+                            ctx.stroke();
+                        });
+                    }
+                    
+                    // Draw parade floats in background
+                    if (paradeFloats) {
+                        paradeFloats.forEach(float => {
+                            ctx.save();
+                            ctx.translate(float.x, float.y);
+                            
+                            if (float.type === 'turkeyFloat') {
+                                // Float base
+                                ctx.fillStyle = '#8B4513';
+                                ctx.fillRect(-50, 20, 100, 30);
+                                // Wheels
+                                ctx.fillStyle = '#333';
+                                ctx.beginPath();
+                                ctx.arc(-35, 50, 15, 0, Math.PI * 2);
+                                ctx.arc(35, 50, 15, 0, Math.PI * 2);
+                                ctx.fill();
+                                // Giant turkey decoration
+                                ctx.fillStyle = '#8B4513';
+                                ctx.beginPath();
+                                ctx.ellipse(0, -10, 35, 30, 0, 0, Math.PI * 2);
+                                ctx.fill();
+                                // Tail feathers
+                                const featherColors = ['#FF4500', '#FFD700', '#FF6347', '#FFA500', '#DC143C'];
+                                for (let f = 0; f < 5; f++) {
+                                    ctx.fillStyle = featherColors[f];
+                                    ctx.beginPath();
+                                    ctx.ellipse(-30 + f * 5, -40 - f * 3, 8, 25, -0.3 + f * 0.15, 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
+                            } else {
+                                // Pilgrim float
+                                ctx.fillStyle = '#654321';
+                                ctx.fillRect(-40, 15, 80, 25);
+                                ctx.fillStyle = '#333';
+                                ctx.beginPath();
+                                ctx.arc(-25, 40, 12, 0, Math.PI * 2);
+                                ctx.arc(25, 40, 12, 0, Math.PI * 2);
+                                ctx.fill();
+                                // Pilgrim figure
+                                ctx.fillStyle = '#1a1a1a';
+                                ctx.fillRect(-15, -30, 30, 45);
+                                // Hat
+                                ctx.fillRect(-20, -50, 40, 8);
+                                ctx.fillRect(-12, -70, 24, 25);
+                                ctx.fillStyle = '#FFD700';
+                                ctx.fillRect(-8, -55, 16, 5);
+                            }
+                            
+                            ctx.restore();
+                        });
+                    }
+                    
                     break;
                 }
                 default: {
@@ -3752,37 +3858,98 @@
             ctx.save();
             ctx.translate(hunter.x, hunter.y);
             
-            // Body
+            // Breathing animation
+            const breathe = Math.sin(hunter.breathePhase || 0) * 2;
+            
+            // Draw danger zone indicator when shooting
+            if (!hunter.isReloading && hunter.graceTimer <= 0) {
+                ctx.globalAlpha = 0.15 + Math.sin(Date.now() * 0.01) * 0.1;
+                ctx.fillStyle = '#FF0000';
+                ctx.beginPath();
+                ctx.arc(0, 0, 200, -0.5, 0.5);
+                ctx.lineTo(0, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+            
+            // Legs with walking animation
+            ctx.fillStyle = '#8B4513';
+            const legSwing = hunter.isReloading ? Math.sin(hunter.animPhase || 0) * 5 : 0;
+            ctx.fillRect(-12 + legSwing, 20, 10, 25);
+            ctx.fillRect(2 - legSwing, 20, 10, 25);
+            
+            // Body with breathing
             ctx.fillStyle = '#556B2F';
-            ctx.fillRect(-15, -20, 30, 40);
+            ctx.fillRect(-15, -20 + breathe, 30, 40);
+            
+            // Vest details
+            ctx.fillStyle = '#4A5D23';
+            ctx.fillRect(-12, -15 + breathe, 6, 30);
+            ctx.fillRect(6, -15 + breathe, 6, 30);
+            
+            // Arms
+            ctx.fillStyle = '#556B2F';
+            ctx.fillRect(15, -15 + breathe, 8, 25);
+            ctx.fillRect(-23, -15 + breathe, 8, 25);
             
             // Head
             ctx.fillStyle = '#DEB887';
             ctx.beginPath();
-            ctx.arc(0, -30, 15, 0, Math.PI * 2);
+            ctx.arc(0, -30 + breathe, 15, 0, Math.PI * 2);
             ctx.fill();
             
-            // Hunter hat
+            // Hunter hat - orange safety
             ctx.fillStyle = '#FF4500';
-            ctx.fillRect(-18, -45, 36, 10);
-            ctx.fillRect(-12, -55, 24, 12);
+            ctx.fillRect(-18, -45 + breathe, 36, 10);
+            ctx.fillRect(-12, -55 + breathe, 24, 12);
             
-            // Gun
-            ctx.fillStyle = '#333';
-            ctx.fillRect(-30, -5, 25, 6);
-            ctx.fillRect(-35, -8, 8, 12);
+            // Gun pointing right (toward turkey)
+            ctx.save();
+            const gunAngle = Math.atan2(turkey.y - hunter.y, turkey.x - hunter.x);
+            ctx.translate(15, -5 + breathe);
+            ctx.rotate(gunAngle);
             
-            // Legs
-            ctx.fillStyle = '#8B4513';
-            ctx.fillRect(-12, 20, 10, 25);
-            ctx.fillRect(2, 20, 10, 25);
+            // Gun body
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(0, -4, 35, 8);
+            // Gun stock
+            ctx.fillStyle = '#5D4037';
+            ctx.fillRect(-15, -6, 18, 12);
+            // Gun barrel
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(30, -3, 12, 6);
+            
+            // Muzzle flash
+            if (hunter.muzzleFlash > 0) {
+                const flashSize = hunter.muzzleFlash * 3;
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(45, 0, flashSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#FF4500';
+                ctx.beginPath();
+                ctx.arc(45, 0, flashSize * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
             
             // Angry eyes
             ctx.fillStyle = '#000';
             ctx.beginPath();
-            ctx.arc(-5, -32, 3, 0, Math.PI * 2);
-            ctx.arc(5, -32, 3, 0, Math.PI * 2);
+            ctx.arc(-5, -32 + breathe, 3, 0, Math.PI * 2);
+            ctx.arc(5, -32 + breathe, 3, 0, Math.PI * 2);
             ctx.fill();
+            
+            // Angry eyebrows
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-10, -38 + breathe);
+            ctx.lineTo(-2, -36 + breathe);
+            ctx.moveTo(10, -38 + breathe);
+            ctx.lineTo(2, -36 + breathe);
+            ctx.stroke();
             
             // Show grace period indicator with countdown
             if (hunter.graceTimer > 0) {
@@ -3791,11 +3958,6 @@
                 ctx.textAlign = 'center';
                 const secondsLeft = Math.ceil(hunter.graceTimer / 60);
                 ctx.fillText('💤 ' + secondsLeft + 's', 0, -70);
-                
-                // Warning text for player
-                ctx.fillStyle = 'rgba(255, 200, 0, 0.8)';
-                ctx.font = 'bold 18px Fraunces';
-                ctx.fillText('FIND COVER!', 0, 80);
             } else if (hunter.isReloading) {
                 // Show reloading indicator
                 ctx.fillStyle = 'rgba(100, 200, 255, 0.9)';
@@ -3819,6 +3981,201 @@
             }
             
             ctx.restore();
+        }
+        
+        function drawHunterWife() {
+            if (!hunterWife) return;
+            
+            ctx.save();
+            ctx.translate(hunterWife.x, hunterWife.y);
+            
+            // Face left (toward turkey)
+            ctx.scale(-1, 1);
+            
+            const breathe = Math.sin(hunterWife.breathePhase || 0) * 1.5;
+            const armSwing = hunterWife.armSwing || 0;
+            
+            // Draw net warning indicator when winding up
+            if (hunterWife.isWindingUp) {
+                ctx.globalAlpha = 0.2 + armSwing * 0.3;
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 10]);
+                ctx.beginPath();
+                const targetAngle = Math.atan2(turkey.y - hunterWife.y, hunterWife.x - turkey.x);
+                ctx.moveTo(-30, 0);
+                ctx.lineTo(-30 + Math.cos(targetAngle) * 150, Math.sin(targetAngle) * 150);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.globalAlpha = 1;
+            }
+            
+            // Dress/body
+            ctx.fillStyle = '#8B0000'; // Dark red dress
+            ctx.beginPath();
+            ctx.moveTo(-15, -15 + breathe);
+            ctx.lineTo(-20, 35);
+            ctx.lineTo(20, 35);
+            ctx.lineTo(15, -15 + breathe);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Apron
+            ctx.fillStyle = '#FFF8DC';
+            ctx.beginPath();
+            ctx.moveTo(-10, -5 + breathe);
+            ctx.lineTo(-12, 30);
+            ctx.lineTo(12, 30);
+            ctx.lineTo(10, -5 + breathe);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Legs
+            ctx.fillStyle = '#DEB887';
+            const legSwing = Math.sin(hunterWife.animPhase || 0) * 3;
+            ctx.fillRect(-10 + legSwing, 32, 8, 15);
+            ctx.fillRect(2 - legSwing, 32, 8, 15);
+            
+            // Shoes
+            ctx.fillStyle = '#2F1810';
+            ctx.fillRect(-12 + legSwing, 45, 12, 5);
+            ctx.fillRect(0 - legSwing, 45, 12, 5);
+            
+            // Arms
+            ctx.fillStyle = '#DEB887';
+            // Back arm
+            ctx.fillRect(12, -10 + breathe, 8, 20);
+            
+            // Front arm holding net (animated)
+            ctx.save();
+            ctx.translate(-15, -5 + breathe);
+            ctx.rotate(-0.3 - armSwing * 1.5); // Wind up rotation
+            ctx.fillRect(0, 0, 8, 22);
+            
+            // Net in hand
+            ctx.translate(4, 22);
+            // Net pole
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(-2, 0, 4, 40);
+            // Net hoop
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 45, 25, 0, Math.PI * 2);
+            ctx.stroke();
+            // Net mesh
+            ctx.strokeStyle = '#D2B48C';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 6; i++) {
+                ctx.beginPath();
+                ctx.moveTo(-20 + i * 8, 30);
+                ctx.quadraticCurveTo(-10 + i * 4, 55, 0, 70);
+                ctx.stroke();
+            }
+            ctx.restore();
+            
+            // Head
+            ctx.fillStyle = '#DEB887';
+            ctx.beginPath();
+            ctx.arc(0, -25 + breathe, 14, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hair - bun style
+            ctx.fillStyle = '#4A3728';
+            ctx.beginPath();
+            ctx.arc(0, -25 + breathe, 14, Math.PI, 0);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(0, -38 + breathe, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(-4, -27 + breathe, 2.5, 0, Math.PI * 2);
+            ctx.arc(4, -27 + breathe, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Determined expression
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(-7, -33 + breathe);
+            ctx.lineTo(-2, -31 + breathe);
+            ctx.moveTo(7, -33 + breathe);
+            ctx.lineTo(2, -31 + breathe);
+            ctx.stroke();
+            
+            // Status indicators
+            ctx.scale(-1, 1); // Flip text back
+            if (hunterWife.graceTimer > 0) {
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+                ctx.font = 'bold 14px Fraunces';
+                ctx.textAlign = 'center';
+                const secondsLeft = Math.ceil(hunterWife.graceTimer / 60);
+                ctx.fillText('🎯 ' + secondsLeft + 's', 0, -60);
+            } else if (hunterWife.isWindingUp) {
+                ctx.fillStyle = 'rgba(255, 150, 50, 0.9)';
+                ctx.font = 'bold 14px Fraunces';
+                ctx.textAlign = 'center';
+                ctx.fillText('🥅 THROWING!', 0, -60);
+            } else {
+                ctx.fillStyle = 'rgba(200, 150, 100, 0.8)';
+                ctx.font = 'bold 12px Fraunces';
+                ctx.textAlign = 'center';
+                const cooldownLeft = Math.ceil((hunterWife.throwCooldown - hunterWife.throwTimer) / 60);
+                ctx.fillText('🥅 ' + cooldownLeft + 's', 0, -60);
+            }
+            
+            ctx.restore();
+        }
+        
+        function drawThrownNets() {
+            thrownNets.forEach(net => {
+                ctx.save();
+                ctx.translate(net.x, net.y);
+                ctx.rotate(net.rotation);
+                ctx.globalAlpha = net.life;
+                
+                const size = net.size;
+                
+                // Net hoop
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Net mesh
+                ctx.strokeStyle = '#D2B48C';
+                ctx.lineWidth = 2;
+                // Radial lines
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(Math.cos(angle) * size / 2, Math.sin(angle) * size / 2);
+                    ctx.stroke();
+                }
+                // Circular lines
+                for (let r = 1; r <= 3; r++) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, (size / 2) * (r / 3), 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Expanding danger effect
+                if (net.expanding) {
+                    ctx.strokeStyle = '#FF4500';
+                    ctx.lineWidth = 2;
+                    ctx.globalAlpha = net.life * 0.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size / 2 + 10, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            });
         }
         
         function drawBarriers() {
@@ -4236,9 +4593,30 @@
 
         function drawParadeConfetti() {
             paradeConfetti.forEach(piece => {
+                ctx.save();
+                ctx.translate(piece.x, piece.y);
+                ctx.rotate(piece.rotation || 0);
                 ctx.globalAlpha = Math.max(0, piece.life);
                 ctx.fillStyle = piece.color;
-                ctx.fillRect(piece.x, piece.y, 4, 4);
+                
+                // Draw different confetti shapes
+                const size = piece.size || 4;
+                const shapeType = Math.floor((piece.x + piece.y) * 100) % 3;
+                
+                if (shapeType === 0) {
+                    // Square
+                    ctx.fillRect(-size/2, -size/2, size, size);
+                } else if (shapeType === 1) {
+                    // Circle
+                    ctx.beginPath();
+                    ctx.arc(0, 0, size/2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Rectangle streamer
+                    ctx.fillRect(-size/4, -size, size/2, size * 2);
+                }
+                
+                ctx.restore();
             });
             ctx.globalAlpha = 1;
         }
@@ -4268,6 +4646,8 @@
                 drawTurkey();
                 if (boss) drawBoss();
                 if (hunter) drawHunter();
+                if (hunterWife) drawHunterWife();
+                if (thrownNets.length) drawThrownNets();
                 if (currentLevel === LEVEL_IDS.STEALTH_BOMBER && bomber) {
                     drawBomber();
                 }
