@@ -495,7 +495,7 @@
             <div style="font-size: 80px;">💀</div>
             <h1>Game Over!</h1>
             <p class="subtitle" id="deathMessage">The turkey has been caught!</p>
-            <p class="instructions">Final Score: <span id="finalScore">0</span> apples</p>
+            <p class="instructions">Final Score: <span id="finalScore">0</span> treats</p>
             <button class="btn" onclick="restartGame()">Try Again</button>
         </div>
 
@@ -503,7 +503,7 @@
             <div style="font-size: 80px;">🏆</div>
             <h1>Victory!</h1>
             <p class="level-name">The Turkey Survives Thanksgiving!</p>
-            <p class="instructions">You've evolved from a barn turkey to a legendary survivor!<br><br>Final Score: <span id="winScore">0</span> apples</p>
+            <p class="instructions">You've evolved from a barn turkey to a legendary survivor!<br><br>Final Score: <span id="winScore">0</span> treats</p>
             <button class="btn" onclick="restartGame()">Play Again</button>
         </div>
     </div>
@@ -945,7 +945,7 @@
         function initBomberLevel() {
             bomber = {
                 x: BASE_WIDTH / 2,
-                y: 140,
+                y: 190, // Shifted down so it isn't obscured by the UI overlay
                 width: 160,
                 height: 50,
                 direction: 1,
