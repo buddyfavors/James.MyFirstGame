@@ -649,6 +649,9 @@
             PUMPKIN: 'pumpkinPie',
             AURORA: 'auroraSpirit'
         };
+        const CORN_MAZE_SPEED_MODIFIER = 0.65;
+        const AURORA_ATTACK_WINDOW_FRAMES = 360;
+        const AURORA_RECHARGE_FRAMES = 180;
 
         // Game State
         let gameState = 'start'; // start, playing, levelup, boss, gameover, win
@@ -756,6 +759,15 @@
         let boss = null;
         let bossProjectiles = [];
 
+        function isAuroraBossVulnerable() {
+            return (
+                boss &&
+                boss.type === BOSS_TYPES.AURORA &&
+                boss.isRecharging &&
+                boss.graceTimer <= 0
+            );
+        }
+
         // Hunter (Level 3)
         let hunter = null;
 
@@ -836,6 +848,7 @@
         function tryPeckAttack() {
             if (peckCooldown > 0) return;
             if (gameState !== 'boss' || !boss) return;
+            if (boss.type === BOSS_TYPES.AURORA && !isAuroraBossVulnerable()) return;
             
             const bossRadius = boss.type === BOSS_TYPES.AURORA ? boss.radius : boss.width / 2;
             const distToBoss = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
@@ -1032,7 +1045,7 @@
             if (type === BOSS_TYPES.AURORA) {
                 bossEmojiEl.textContent = '🌌';
                 bossNameEl.textContent = 'Northern Light Monster';
-                bossInstructionsEl.innerHTML = 'The Aurora Beast awakens!<br>🍍 Pineapples are your only ammo<br>🌲 Hide behind the glowing trees<br>🛡️ Trigger your Gravy Shield with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>👊 Peck or lob pineapples after it charges';
+                bossInstructionsEl.innerHTML = 'The Aurora Beast awakens!<br>🌌 Dodge aurora volleys when it attacks<br>🌲 Hide behind the glowing trees<br>🍍 Pineapples fuel scraps but can\'t hurt it<br>🛡️ Trigger your Gravy Shield with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>👊 Peck it while it\'s recharging!';
             } else {
                 bossEmojiEl.textContent = '🥧';
                 bossNameEl.textContent = 'Pumpkin Pie';
@@ -1639,7 +1652,9 @@
                     maxHealth: 30,
                     attackTimer: 0,
                     graceTimer: 240,
-                    pulse: 0
+                    pulse: 0,
+                    isRecharging: false,
+                    rechargeTimer: 0
                 };
                 ensureAuroraAmbience();
             } else {
@@ -1999,6 +2014,8 @@
             let moveDy = 0;
             let speedMultiplier = 1;
             const cranberryBoost = leftoverBuffs.cranberry.activeTimer > 0 ? LEFTOVER_CONFIG.cranberry.speedBoost : 1;
+            const isCornMazeLevel = currentLevel === 6;
+            const levelSpeedModifier = isCornMazeLevel ? CORN_MAZE_SPEED_MODIFIER : 1;
             
             const keyLeft = keys['arrowleft'] || keys['a'] || keys['ArrowLeft'];
             const keyRight = keys['arrowright'] || keys['d'] || keys['ArrowRight'];
@@ -2028,7 +2045,7 @@
                 }
             }
 
-            const strideSpeed = turkey.speed * speedMultiplier * cranberryBoost;
+            const strideSpeed = turkey.speed * speedMultiplier * cranberryBoost * levelSpeedModifier;
             const isMoving = moveDx !== 0 || moveDy !== 0;
             if (isMoving) {
                 const len = Math.hypot(moveDx, moveDy);
@@ -2066,7 +2083,8 @@
             if (gameState === 'boss' && boss && peckCooldown === 0) {
                 const bossRadius = boss.type === BOSS_TYPES.AURORA ? boss.radius : boss.width / 2;
                 const distToBoss = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
-                if (distToBoss < PECK_RANGE + bossRadius) {
+                const canAutoPeck = boss.type !== BOSS_TYPES.AURORA || isAuroraBossVulnerable();
+                if (distToBoss < PECK_RANGE + bossRadius && canAutoPeck) {
                     tryPeckAttack();
                 }
             }
@@ -2086,14 +2104,14 @@
                     gainLeftoverScraps();
                     
                     if (gameState === 'boss' && boss) {
-                        const damage = boss.type === BOSS_TYPES.AURORA ? 2 : 1;
-                        boss.health -= damage;
-                        const bossParticleColor = boss.type === BOSS_TYPES.AURORA ? '#7FFFD4' : '#FF7518';
-                        spawnParticles(boss.x, boss.y, bossParticleColor, 15);
-                        if (boss.health <= 0) {
-                            spawnParticles(boss.x, boss.y, '#FFD700', 30);
-                            boss = null;
-                            levelUp();
+                        if (boss.type !== BOSS_TYPES.AURORA) {
+                            boss.health -= 1;
+                            spawnParticles(boss.x, boss.y, '#FF7518', 15);
+                            if (boss.health <= 0) {
+                                spawnParticles(boss.x, boss.y, '#FFD700', 30);
+                                boss = null;
+                                levelUp();
+                            }
                         }
                     } else if (currentLevel === 7 && paradeFloat && gameState !== 'boss') {
                         incrementParadeFloat();
@@ -2336,6 +2354,17 @@
 
             if (boss.graceTimer > 0) {
                 boss.graceTimer--;
+                boss.attackTimer = 0;
+                return;
+            }
+
+            if (boss.isRecharging) {
+                boss.rechargeTimer--;
+                if (boss.rechargeTimer <= 0) {
+                    boss.isRecharging = false;
+                    boss.attackTimer = 0;
+                    spawnParticles(boss.x, boss.y, '#7FFFD4', 10);
+                }
                 return;
             }
 
@@ -2389,6 +2418,12 @@
                     maxRadius: boss.radius + 260,
                     alpha: 0.7
                 });
+            }
+
+            if (boss.attackTimer >= AURORA_ATTACK_WINDOW_FRAMES) {
+                boss.isRecharging = true;
+                boss.rechargeTimer = AURORA_RECHARGE_FRAMES;
+                spawnParticles(boss.x, boss.y, '#d4fff9', 18);
             }
         }
         function levelUp() {
@@ -3046,9 +3081,10 @@
 
         function drawAuroraBossSprite() {
             if (!boss) return;
+            const auroraVulnerable = isAuroraBossVulnerable();
             ctx.save();
             ctx.translate(boss.x, boss.y);
-            const pulse = 0.95 + Math.sin(boss.pulse) * 0.12;
+            const pulse = 0.95 + Math.sin(boss.pulse) * (auroraVulnerable ? 0.2 : 0.12);
             const twist = Math.sin(boss.pulse * 0.8) * 0.25;
             ctx.rotate(twist);
 
@@ -3094,6 +3130,16 @@
             ctx.beginPath();
             ctx.arc(0, 0, boss.radius * 0.95 * pulse, 0, Math.PI * 2);
             ctx.fill();
+
+            if (auroraVulnerable) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.85)';
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.arc(0, 0, boss.radius * 1.45, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
 
             ctx.strokeStyle = 'rgba(94, 241, 255, 0.45)';
             ctx.lineWidth = 2;
@@ -3184,6 +3230,11 @@
                 ctx.textAlign = 'center';
                 const secondsLeft = Math.ceil(boss.graceTimer / 60);
                 ctx.fillText(`Aurora charging... ${secondsLeft}s`, boss.x, boss.y - boss.radius - 50);
+            } else if (auroraVulnerable) {
+                ctx.fillStyle = '#FFD700';
+                ctx.font = '18px Fraunces';
+                ctx.textAlign = 'center';
+                ctx.fillText('Aurora recharging - peck now!', boss.x, boss.y - boss.radius - 50);
             }
             ctx.restore();
         }
