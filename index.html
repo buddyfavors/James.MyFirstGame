@@ -543,9 +543,7 @@
             <p class="subtitle">A Thanksgiving Adventure</p>
             <div class="version-badge" id="versionBadge" aria-live="polite"></div>
             <div class="instructions">
-                Gobble treats, dodge kitchen chaos, and evolve before dinner.<br><br>
-                <span class="desktop-controls"><strong>Arrow Keys</strong> / <strong>WASD</strong> or <strong>click & drag</strong> to move<br><strong>SPACE</strong> or double-click for your ability (🛡️ bosses, ⚡ levels)</span>
-                <span class="mobile-controls"><strong>Touch & hold</strong> to move<br><strong>Double-tap</strong> to trigger your ability</span>
+                Gobble treats, dodge kitchen chaos, and evolve before dinner.
             </div>
             <button class="btn" onclick="startGame()">Start Gobbling!</button>
             <a href="vr.html" style="display: block; margin-top: 20px; color: #DAA520; font-size: 16px; text-decoration: none; opacity: 0.9;">🥽 Try VR Version</a>
@@ -767,6 +765,8 @@
 
         // Hunter (Level 3)
         let hunter = null;
+        let hunterWife = null;
+        let thrownNets = [];
 
         // Bomber (Level 4)
         let bomber = null;
@@ -1129,6 +1129,8 @@
             roamingAuroras = [];
             boss = null;
             hunter = null;
+            hunterWife = null;
+            thrownNets = [];
             bomber = null;
             barriers = [];
             paradeFloat = null;
@@ -1186,8 +1188,9 @@
         }
         
         function initHunterEncounter() {
+            // Hunter on the left side
             hunter = {
-                x: BASE_WIDTH / 2,
+                x: 100,
                 y: BASE_HEIGHT / 2,
                 width: 50,
                 height: 70,
@@ -1197,23 +1200,41 @@
                 shotsFired: 0,
                 reloadTimer: 0,
                 isReloading: false,
-                walkSpeed: 0.8,
+                walkSpeed: 1.2,
                 patrolDirection: 1,
-                wanderAxis: 'x',
-                patrolBounds: getHunterPatrolBounds()
+                wanderAxis: 'y',
+                patrolBounds: getHunterPatrolBounds(),
+                muzzleFlash: 0,
+                animPhase: 0,
+                breathePhase: 0
             };
+            
+            // Wife on the right side with a net
+            hunterWife = {
+                x: BASE_WIDTH - 100,
+                y: BASE_HEIGHT / 2,
+                width: 45,
+                height: 65,
+                graceTimer: 240, // Slightly longer grace for wife
+                throwTimer: 0,
+                throwCooldown: 180, // 3 seconds between throws
+                isWindingUp: false,
+                windupTimer: 0,
+                walkSpeed: 0.9,
+                patrolDirection: -1,
+                wanderAxis: 'y',
+                animPhase: Math.PI, // Offset animation from hunter
+                breathePhase: 0,
+                armSwing: 0
+            };
+            
+            thrownNets = [];
             
             spawnBarriersForLevel(LEVEL_IDS.HUNTER_SIEGE);
             
-            const corners = [
-                { x: 80, y: 100 },
-                { x: BASE_WIDTH - 80, y: 100 },
-                { x: 80, y: BASE_HEIGHT - 150 },
-                { x: BASE_WIDTH - 80, y: BASE_HEIGHT - 150 }
-            ];
-            const randomCorner = corners[Math.floor(Math.random() * corners.length)];
-            turkey.x = randomCorner.x;
-            turkey.y = randomCorner.y;
+            // Turkey starts in the middle
+            turkey.x = BASE_WIDTH / 2;
+            turkey.y = BASE_HEIGHT / 2 + 50;
         }
 
         function getHunterPatrolBounds() {
@@ -1292,26 +1313,129 @@
 
         function updateHunterPatrol() {
             if (!hunter || !hunter.isReloading) return;
-            const bounds = hunter.patrolBounds || getHunterPatrolBounds();
-            const axis = hunter.wanderAxis || 'x';
-            const speed = hunter.walkSpeed || 0.8;
-            if (axis === 'x') {
-                hunter.x += speed * hunter.patrolDirection;
-                if (hunter.x < bounds.minX || hunter.x > bounds.maxX) {
-                    // When hitting bounds, find a new direction with fewer obstacles
-                    hunter.x = Math.max(bounds.minX, Math.min(bounds.maxX, hunter.x));
-                    const bestDir = findLeastObstructedDirection(hunter.x, hunter.y);
-                    hunter.wanderAxis = bestDir.axis;
-                    hunter.patrolDirection = bestDir.dir;
+            // Hunter patrols vertically on left side
+            const minY = 120;
+            const maxY = BASE_HEIGHT - 160;
+            const speed = hunter.walkSpeed || 1.2;
+            
+            hunter.y += speed * hunter.patrolDirection;
+            if (hunter.y < minY || hunter.y > maxY) {
+                hunter.y = Math.max(minY, Math.min(maxY, hunter.y));
+                hunter.patrolDirection *= -1;
+            }
+            
+            // Update animation
+            hunter.animPhase += 0.1;
+        }
+        
+        function updateHunterWife() {
+            if (!hunterWife || currentLevel !== LEVEL_IDS.HUNTER_SIEGE || gameState !== 'playing') return;
+            
+            // Wife patrols vertically on right side
+            const minY = 120;
+            const maxY = BASE_HEIGHT - 160;
+            const speed = hunterWife.walkSpeed || 0.9;
+            
+            hunterWife.y += speed * hunterWife.patrolDirection;
+            if (hunterWife.y < minY || hunterWife.y > maxY) {
+                hunterWife.y = Math.max(minY, Math.min(maxY, hunterWife.y));
+                hunterWife.patrolDirection *= -1;
+            }
+            
+            // Update animation
+            hunterWife.animPhase += 0.08;
+            hunterWife.breathePhase += 0.03;
+            
+            // Grace period countdown
+            if (hunterWife.graceTimer > 0) {
+                hunterWife.graceTimer--;
+                return;
+            }
+            
+            // Net throwing logic
+            if (hunterWife.isWindingUp) {
+                hunterWife.windupTimer++;
+                hunterWife.armSwing = Math.min(1, hunterWife.windupTimer / 45);
+                
+                if (hunterWife.windupTimer >= 60) {
+                    // Throw the net!
+                    throwNet();
+                    hunterWife.isWindingUp = false;
+                    hunterWife.windupTimer = 0;
+                    hunterWife.armSwing = 0;
+                    hunterWife.throwTimer = 0;
                 }
             } else {
-                hunter.y += speed * hunter.patrolDirection;
-                if (hunter.y < bounds.minY || hunter.y > bounds.maxY) {
-                    // When hitting bounds, find a new direction with fewer obstacles
-                    hunter.y = Math.max(bounds.minY, Math.min(bounds.maxY, hunter.y));
-                    const bestDir = findLeastObstructedDirection(hunter.x, hunter.y);
-                    hunter.wanderAxis = bestDir.axis;
-                    hunter.patrolDirection = bestDir.dir;
+                hunterWife.throwTimer++;
+                if (hunterWife.throwTimer >= hunterWife.throwCooldown) {
+                    hunterWife.isWindingUp = true;
+                    hunterWife.windupTimer = 0;
+                }
+            }
+        }
+        
+        function throwNet() {
+            if (!hunterWife) return;
+            
+            // Calculate trajectory to turkey with some lead
+            const dx = turkey.x - hunterWife.x;
+            const dy = turkey.y - hunterWife.y;
+            const dist = Math.hypot(dx, dy);
+            const speed = 4;
+            
+            thrownNets.push({
+                x: hunterWife.x - 30,
+                y: hunterWife.y,
+                vx: (dx / dist) * speed,
+                vy: (dy / dist) * speed,
+                rotation: 0,
+                rotationSpeed: 0.15,
+                size: 50,
+                expanding: false,
+                expandTimer: 0,
+                life: 1
+            });
+            
+            // Visual feedback - spawn particles
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: hunterWife.x - 30,
+                    y: hunterWife.y,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 3,
+                    life: 1,
+                    color: '#8B4513',
+                    size: 3
+                });
+            }
+        }
+        
+        function updateThrownNets() {
+            for (let i = thrownNets.length - 1; i >= 0; i--) {
+                const net = thrownNets[i];
+                
+                net.x += net.vx;
+                net.y += net.vy;
+                net.rotation += net.rotationSpeed;
+                
+                // Check if net is close to turkey - then expand
+                const distToTurkey = Math.hypot(net.x - turkey.x, net.y - turkey.y);
+                if (distToTurkey < 100 && !net.expanding) {
+                    net.expanding = true;
+                    net.vx *= 0.3;
+                    net.vy *= 0.3;
+                }
+                
+                if (net.expanding) {
+                    net.expandTimer++;
+                    net.size = 50 + net.expandTimer * 2;
+                    net.life -= 0.01;
+                }
+                
+                // Remove if off screen or expired
+                if (net.x < -100 || net.x > BASE_WIDTH + 100 || 
+                    net.y < -100 || net.y > BASE_HEIGHT + 100 || net.life <= 0) {
+                    thrownNets.splice(i, 1);
                 }
             }
         }
