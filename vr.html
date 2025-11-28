@@ -434,6 +434,48 @@
             <a-plane id="bossHealthBar" position="0 1.2 0.01" width="1.9" height="0.15" color="#FF0000" look-at="[camera]"></a-plane>
         </a-entity>
 
+        <!-- Stealth Bomber - Hidden initially -->
+        <a-entity id="stealthBomber" visible="false" position="0 15 -30">
+            <!-- Main fuselage -->
+            <a-box width="2" height="0.5" depth="8" color="#1a1a2e" material="metalness: 0.8; roughness: 0.3"></a-box>
+            <!-- Wings (swept back like B-2) -->
+            <a-box width="12" height="0.15" depth="4" color="#1a1a2e" material="metalness: 0.8; roughness: 0.3" position="0 0.1 0" rotation="0 0 0"></a-box>
+            <!-- Wing tips angled -->
+            <a-box width="3" height="0.1" depth="2" color="#1a1a2e" position="-6 0.1 1" rotation="0 -30 0"></a-box>
+            <a-box width="3" height="0.1" depth="2" color="#1a1a2e" position="6 0.1 1" rotation="0 30 0"></a-box>
+            <!-- Cockpit -->
+            <a-sphere radius="0.6" color="#0a0a15" position="0 0.2 -3" scale="1 0.4 1.5" material="metalness: 0.9; roughness: 0.1"></a-sphere>
+            <!-- Engine glow -->
+            <a-cylinder radius="0.3" height="0.5" color="#4a0000" position="-1.5 -0.1 3" material="emissive: #ff3300; emissiveIntensity: 0.3"></a-cylinder>
+            <a-cylinder radius="0.3" height="0.5" color="#4a0000" position="1.5 -0.1 3" material="emissive: #ff3300; emissiveIntensity: 0.3"></a-cylinder>
+        </a-entity>
+
+        <!-- Stealth Bomber Barriers (runway walls) -->
+        <a-entity id="bomberBarriers" visible="false">
+            <!-- Left barrier wall -->
+            <a-box position="-10 1.6 0" width="0.5" height="3.2" depth="40" color="#2a3a4a" material="metalness: 0.5; roughness: 0.7"></a-box>
+            <a-box position="-10 3.5 -15" width="0.6" height="0.3" depth="3" color="#ff3300" material="emissive: #ff3300; emissiveIntensity: 0.5"></a-box>
+            <a-box position="-10 3.5 0" width="0.6" height="0.3" depth="3" color="#ff3300" material="emissive: #ff3300; emissiveIntensity: 0.5"></a-box>
+            <a-box position="-10 3.5 15" width="0.6" height="0.3" depth="3" color="#ff3300" material="emissive: #ff3300; emissiveIntensity: 0.5"></a-box>
+            <!-- Right barrier wall -->
+            <a-box position="10 1.6 0" width="0.5" height="3.2" depth="40" color="#2a3a4a" material="metalness: 0.5; roughness: 0.7"></a-box>
+            <a-box position="10 3.5 -15" width="0.6" height="0.3" depth="3" color="#ff3300" material="emissive: #ff3300; emissiveIntensity: 0.5"></a-box>
+            <a-box position="10 3.5 0" width="0.6" height="0.3" depth="3" color="#ff3300" material="emissive: #ff3300; emissiveIntensity: 0.5"></a-box>
+            <a-box position="10 3.5 15" width="0.6" height="0.3" depth="3" color="#ff3300" material="emissive: #ff3300; emissiveIntensity: 0.5"></a-box>
+            <!-- Cover crates for player to hide behind -->
+            <a-box position="-5 0.8 -10" width="2" height="1.6" depth="2" color="#4a3a2a" class="barrier"></a-box>
+            <a-box position="5 0.8 -5" width="2" height="1.6" depth="2" color="#4a3a2a" class="barrier"></a-box>
+            <a-box position="-3 0.8 5" width="2" height="1.6" depth="2" color="#4a3a2a" class="barrier"></a-box>
+            <a-box position="6 0.8 10" width="2" height="1.6" depth="2" color="#4a3a2a" class="barrier"></a-box>
+            <a-box position="0 0.8 0" width="3" height="1.6" depth="3" color="#3a4a5a" class="barrier"></a-box>
+            <!-- Runway markings -->
+            <a-plane position="0 0.02 -10" rotation="-90 0 0" width="2" height="8" color="#ffffff" material="opacity: 0.3"></a-plane>
+            <a-plane position="0 0.02 10" rotation="-90 0 0" width="2" height="8" color="#ffffff" material="opacity: 0.3"></a-plane>
+        </a-entity>
+
+        <!-- Bombs Container -->
+        <a-entity id="bombs"></a-entity>
+
         <!-- Hunter - Hidden initially -->
         <a-entity id="hunter" visible="false" position="0 0 0">
             <!-- Body -->
@@ -512,6 +554,7 @@
         let cameraRig, camera, boss, hunter, apples, projectiles;
         let sky, ground, barnEnv, fieldEnv, forestEnv, sunLight;
         let beak, turkeyBody, pieFilling, bossHealthBar, bossFightEmojiEl, bossFightNameEl, bossFightInstructionsEl;
+        let stealthBomber, bomberBarriers, bombs;
 
         // Game settings
         const LEVEL_IDS = Object.freeze({
@@ -576,6 +619,23 @@
             shootTimer: 0
         };
 
+        // Stealth Bomber state
+        let bomberState = {
+            active: false,
+            bombsDropped: 0,
+            totalBombs: 16,
+            nextBombTimer: 0,
+            phase: 'bombing', // 'bombing', 'speedboost', 'returning'
+            speedBoostTimer: 0,
+            targetX: 0,
+            targetZ: 0,
+            currentSpeed: 0.15,
+            baseSpeed: 0.15,
+            boostSpeed: 0.5,
+            angle: 0,
+            flyAroundTimer: 0
+        };
+
         // Initialize when scene is ready
         document.addEventListener('DOMContentLoaded', () => {
             const scene = document.querySelector('a-scene');
@@ -621,6 +681,9 @@
             bossFightEmojiEl = document.getElementById('bossFightEmoji');
             bossFightNameEl = document.getElementById('bossFightName');
             bossFightInstructionsEl = document.getElementById('bossFightInstructions');
+            stealthBomber = document.getElementById('stealthBomber');
+            bomberBarriers = document.getElementById('bomberBarriers');
+            bombs = document.getElementById('bombs');
         }
 
         function setupControls() {
@@ -752,6 +815,34 @@
                 };
             } else {
                 hunter.setAttribute('visible', 'false');
+            }
+
+            // Setup stealth bomber for level 7
+            if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
+                stealthBomber.setAttribute('visible', 'true');
+                stealthBomber.setAttribute('position', '0 12 -25');
+                bomberBarriers.setAttribute('visible', 'true');
+                bombs.innerHTML = '';
+                bomberState = {
+                    active: true,
+                    bombsDropped: 0,
+                    totalBombs: 16,
+                    nextBombTimer: 120, // Start with a delay before first bomb
+                    phase: 'bombing',
+                    speedBoostTimer: 0,
+                    targetX: 0,
+                    targetZ: 0,
+                    currentSpeed: 0.15,
+                    baseSpeed: 0.15,
+                    boostSpeed: 0.5,
+                    angle: 0,
+                    flyAroundTimer: 0
+                };
+            } else {
+                stealthBomber.setAttribute('visible', 'false');
+                bomberBarriers.setAttribute('visible', 'false');
+                bomberState.active = false;
+                bombs.innerHTML = '';
             }
 
             boss.setAttribute('visible', 'false');
@@ -1024,8 +1115,14 @@
             }
 
             // Update hunter
-            if (currentLevel === 3 && hunter.getAttribute('visible')) {
+            if (currentLevel === LEVEL_IDS.HUNTER_SIEGE && hunter.getAttribute('visible')) {
                 updateHunter();
+            }
+
+            // Update stealth bomber
+            if (currentLevel === LEVEL_IDS.STEALTH_BOMBER && bomberState.active) {
+                updateBomber();
+                updateBombs();
             }
 
             // Update projectiles
@@ -1238,6 +1335,201 @@
                     }
                 }
             }
+        }
+
+        function spawnBomb(x, z) {
+            const bomb = document.createElement('a-entity');
+            bomb.setAttribute('position', `${x} 12 ${z}`);
+            bomb.setAttribute('class', 'bomb');
+            bomb.dataset.vy = -0.15; // Falling speed
+            bomb.dataset.landed = 'false';
+            bomb.dataset.explosionTimer = 0;
+            
+            bomb.innerHTML = `
+                <a-sphere radius="0.4" color="#1a1a2e" material="metalness: 0.7; roughness: 0.3">
+                    <a-cylinder radius="0.15" height="0.3" color="#333" position="0 0.4 0"></a-cylinder>
+                    <a-cone radius-bottom="0.2" radius-top="0" height="0.5" color="#ff3300" position="0 -0.5 0" rotation="180 0 0" material="emissive: #ff3300; emissiveIntensity: 0.3"></a-cone>
+                </a-sphere>
+            `;
+            
+            bombs.appendChild(bomb);
+        }
+
+        function createExplosion(pos) {
+            // Create explosion visual
+            const explosion = document.createElement('a-entity');
+            explosion.setAttribute('position', `${pos.x} 0.5 ${pos.z}`);
+            explosion.innerHTML = `
+                <a-sphere radius="0.5" color="#ff6600" material="emissive: #ff6600; emissiveIntensity: 1; opacity: 0.9"
+                    animation="property: scale; to: 4 4 4; dur: 300; easing: easeOutQuad"
+                    animation__fade="property: material.opacity; to: 0; dur: 500">
+                </a-sphere>
+                <a-sphere radius="0.3" color="#ffff00" material="emissive: #ffff00; emissiveIntensity: 1; opacity: 0.9"
+                    animation="property: scale; to: 3 3 3; dur: 200; easing: easeOutQuad"
+                    animation__fade="property: material.opacity; to: 0; dur: 400">
+                </a-sphere>
+            `;
+            document.querySelector('a-scene').appendChild(explosion);
+            
+            // Create particles
+            createParticleEffect(pos, '#ff6600', 15);
+            createParticleEffect(pos, '#ffff00', 10);
+            
+            setTimeout(() => explosion.remove(), 600);
+        }
+
+        function updateBomber() {
+            if (!bomberState.active) return;
+            
+            const bomberPos = stealthBomber.getAttribute('position');
+            
+            // Check if level is complete (all 16 bombs dropped and survived)
+            if (bomberState.bombsDropped >= bomberState.totalBombs && 
+                bombs.querySelectorAll('.bomb').length === 0) {
+                // Level complete!
+                bomberState.active = false;
+                levelUp();
+                return;
+            }
+            
+            if (bomberState.phase === 'bombing') {
+                // Move bomber in a pattern across the field
+                bomberPos.z += bomberState.currentSpeed;
+                
+                // Oscillate side to side
+                bomberState.angle += 0.02;
+                bomberPos.x = Math.sin(bomberState.angle * 2) * 6;
+                
+                // Reset when going too far
+                if (bomberPos.z > 25) {
+                    bomberPos.z = -25;
+                }
+                
+                stealthBomber.setAttribute('position', bomberPos);
+                
+                // Update rotation to face movement direction
+                const rotY = Math.atan2(Math.cos(bomberState.angle * 2) * 0.12, bomberState.currentSpeed) * (180 / Math.PI);
+                stealthBomber.setAttribute('rotation', `0 ${rotY} 0`);
+                
+                // Drop bombs
+                if (bomberState.bombsDropped < bomberState.totalBombs) {
+                    bomberState.nextBombTimer--;
+                    
+                    if (bomberState.nextBombTimer <= 0) {
+                        // Drop bomb at random position on the runway
+                        const bombX = (Math.random() - 0.5) * 16; // Between barriers
+                        const bombZ = (Math.random() - 0.5) * 28;
+                        spawnBomb(bombX, bombZ);
+                        bomberState.bombsDropped++;
+                        
+                        // Random delay between 2-4 seconds for next bomb (120-240 frames at 60fps)
+                        bomberState.nextBombTimer = 120 + Math.random() * 120;
+                        
+                        // After every 4 bombs, enter speed boost phase
+                        if (bomberState.bombsDropped % 4 === 0 && bomberState.bombsDropped < bomberState.totalBombs) {
+                            bomberState.phase = 'speedboost';
+                            bomberState.speedBoostTimer = 0;
+                            bomberState.flyAroundTimer = 180; // 3 seconds of flying around
+                        }
+                    }
+                }
+            } else if (bomberState.phase === 'speedboost') {
+                // Speed boost flying around phase
+                bomberState.speedBoostTimer++;
+                bomberState.flyAroundTimer--;
+                
+                // Accelerate
+                bomberState.currentSpeed = Math.min(bomberState.boostSpeed, bomberState.currentSpeed + 0.02);
+                
+                // Fly in aggressive patterns
+                const t = bomberState.speedBoostTimer * 0.05;
+                bomberPos.x = Math.sin(t * 3) * 8;
+                bomberPos.z = Math.cos(t * 2) * 12;
+                bomberPos.y = 10 + Math.sin(t * 4) * 3; // Vary altitude
+                
+                stealthBomber.setAttribute('position', bomberPos);
+                
+                // Bank/tilt during turns
+                const bankAngle = Math.cos(t * 3) * 30;
+                const pitchAngle = Math.sin(t * 4) * 10;
+                stealthBomber.setAttribute('rotation', `${pitchAngle} ${t * 50 % 360} ${bankAngle}`);
+                
+                // After flying around, return to bombing
+                if (bomberState.flyAroundTimer <= 0) {
+                    bomberState.phase = 'returning';
+                }
+            } else if (bomberState.phase === 'returning') {
+                // Slow down and return to bombing altitude/position
+                bomberState.currentSpeed = Math.max(bomberState.baseSpeed, bomberState.currentSpeed - 0.01);
+                
+                // Ease back to bombing altitude
+                bomberPos.y += (12 - bomberPos.y) * 0.05;
+                
+                // Move toward center
+                bomberPos.x += (0 - bomberPos.x) * 0.03;
+                bomberPos.z += (-15 - bomberPos.z) * 0.03;
+                
+                stealthBomber.setAttribute('position', bomberPos);
+                
+                // Ease rotation back to level
+                const currentRot = stealthBomber.getAttribute('rotation');
+                stealthBomber.setAttribute('rotation', `${currentRot.x * 0.9} ${currentRot.y * 0.95} ${currentRot.z * 0.9}`);
+                
+                // When close enough to target, resume bombing
+                if (Math.abs(bomberPos.y - 12) < 0.5 && bomberState.currentSpeed <= bomberState.baseSpeed + 0.02) {
+                    bomberState.phase = 'bombing';
+                    bomberState.nextBombTimer = 90; // Short delay before next bomb
+                }
+            }
+        }
+
+        function updateBombs() {
+            const bombElements = bombs.querySelectorAll('.bomb');
+            const playerPos = cameraRig.getAttribute('position');
+            
+            bombElements.forEach(bomb => {
+                const pos = bomb.getAttribute('position');
+                const landed = bomb.dataset.landed === 'true';
+                
+                if (!landed) {
+                    // Bomb is falling
+                    const vy = parseFloat(bomb.dataset.vy);
+                    pos.y += vy;
+                    bomb.setAttribute('position', pos);
+                    
+                    // Check if landed
+                    if (pos.y <= 0.5) {
+                        pos.y = 0.5;
+                        bomb.setAttribute('position', pos);
+                        bomb.dataset.landed = 'true';
+                        bomb.dataset.explosionTimer = 60; // 1 second until explosion
+                        
+                        // Add warning pulse
+                        const sphere = bomb.querySelector('a-sphere');
+                        if (sphere) {
+                            sphere.setAttribute('animation__warn', 'property: material.emissive; from: #1a1a2e; to: #ff0000; dur: 200; dir: alternate; loop: true');
+                        }
+                    }
+                } else {
+                    // Bomb landed, countdown to explosion
+                    let timer = parseInt(bomb.dataset.explosionTimer);
+                    timer--;
+                    bomb.dataset.explosionTimer = timer;
+                    
+                    if (timer <= 0) {
+                        // Explode!
+                        createExplosion(pos);
+                        
+                        // Check if player is in blast radius
+                        const dist = distance3D(playerPos, pos);
+                        if (dist < 3) {
+                            gameOver('You were caught in a bomb explosion!');
+                        }
+                        
+                        bomb.remove();
+                    }
+                }
+            });
         }
 
         function updateProjectiles() {
