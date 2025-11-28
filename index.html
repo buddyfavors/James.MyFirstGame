@@ -98,6 +98,82 @@
             box-shadow: inset 0 3px 10px rgba(0,0,0,0.5);
         }
 
+        .leftover-panel {
+            position: absolute;
+            bottom: 100px;
+            left: 20px;
+            width: 210px;
+            padding: 12px 14px;
+            border-radius: 18px;
+            background: rgba(61, 41, 20, 0.8);
+            border: 2px solid var(--harvest-gold);
+            color: var(--cream);
+            font-size: 14px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+            pointer-events: auto;
+        }
+
+        .leftover-panel h3 {
+            font-family: 'Caveat', cursive;
+            font-size: 22px;
+            margin: 0 0 6px;
+            color: var(--pumpkin);
+        }
+
+        .leftover-scraps {
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .leftover-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .leftover-btn {
+            font-family: 'Fraunces', serif;
+            font-size: 14px;
+            padding: 8px 10px;
+            border-radius: 14px;
+            border: 2px solid var(--harvest-gold);
+            background: linear-gradient(135deg, rgba(255,117,24,0.8), rgba(210,105,30,0.8));
+            color: var(--cream);
+            cursor: pointer;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+
+        .leftover-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .leftover-status {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--harvest-gold);
+            min-height: 30px;
+        }
+
+        @media (max-width: 600px) {
+            .leftover-panel {
+                width: calc(100% - 40px);
+                left: 50%;
+                transform: translateX(-50%);
+                bottom: 90px;
+            }
+            .leftover-actions {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            .leftover-btn {
+                flex: 1 1 48%;
+                font-size: 12px;
+                padding: 6px 4px;
+            }
+        }
+
         .xp-bar {
             height: 100%;
             background: linear-gradient(90deg, var(--sage-green), var(--pumpkin), var(--cranberry));
@@ -463,6 +539,16 @@
             <div class="xp-text" id="xpText">0 / 10 XP</div>
         </div>
 
+        <section class="leftover-panel" aria-live="polite">
+            <h3>Leftovers Lab</h3>
+            <div class="leftover-scraps"><span id="leftoverScraps">0</span> scraps</div>
+            <div class="leftover-actions">
+                <button class="leftover-btn" id="craftGravyBtn">🛡️ Gravy Shield</button>
+                <button class="leftover-btn" id="craftCranberryBtn">⚡ Cranberry Dash</button>
+            </div>
+            <div class="leftover-status" id="leftoverStatus">Collect treats to cook buffs!</div>
+        </section>
+
         <div class="start-screen" id="startScreen">
             <div class="turkey-emoji">🦃</div>
             <h1>Turkey Evolution</h1>
@@ -523,10 +609,14 @@
         const scoreIconEl = document.getElementById('scoreIcon');
         const levelCountdownEl = document.getElementById('levelCountdown');
         const versionBadgeEl = document.getElementById('versionBadge');
+        const leftoverScrapsEl = document.getElementById('leftoverScraps');
+        const leftoverStatusEl = document.getElementById('leftoverStatus');
+        const craftGravyBtn = document.getElementById('craftGravyBtn');
+        const craftCranberryBtn = document.getElementById('craftCranberryBtn');
 
         const VERSION = Object.freeze({
             major: 1,
-            minor: 0,
+            minor: 1,
             patch: 0,
             codename: 'Harvest Escape',
             toString() {
@@ -587,8 +677,26 @@
             2: { name: 'Turkey Run', xpNeeded: 15, bgColor: '#228B22', description: 'Run through the autumn fields!' },
             3: { name: 'Hunter Hunt Down', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Hide behind barriers to survive! The hunter is waking up...' },
             4: { name: 'Stealth Bomber Siege', xpNeeded: 3, bgColor: '#0f1a2b', description: 'B-2 bomber overhead! Survive 3 bombing runs.' },
-            5: { name: 'Northern Lights Siege', xpNeeded: 1, bgColor: '#082137', description: 'Aurora beast attacks! Pineapples fuel your survival.' }
+            5: { name: 'Northern Lights Siege', xpNeeded: 1, bgColor: '#082137', description: 'Aurora beast attacks! Pineapples fuel your survival.' },
+            6: { name: 'Corn Maze Migration', xpNeeded: 14, bgColor: '#6b3e12', description: 'Navigate a shifting corn maze and harvest cobs for guidance!' },
+            7: { name: 'Parade Float Builder', xpNeeded: 6, bgColor: '#320b28', description: 'Collect float parts and assemble the victory parade!' }
         };
+        const MAX_LEVEL = Object.keys(levels).length;
+
+        const LEFTOVER_CONFIG = Object.freeze({
+            scrapsPerFruit: 1,
+            gravy: {
+                cost: 5,
+                duration: 8 * 60,
+                cooldown: 12 * 60
+            },
+            cranberry: {
+                cost: 4,
+                duration: 6 * 60,
+                cooldown: 8 * 60,
+                speedBoost: 1.6
+            }
+        });
 
         // Turkey
         const turkey = {
@@ -649,6 +757,15 @@
 
         // Particles
         let particles = [];
+        let paradeFloat = null;
+        let paradeConfetti = [];
+
+        const leftoverBuffs = {
+            scraps: 0,
+            gravy: { activeTimer: 0, cooldownTimer: 0 },
+            cranberry: { activeTimer: 0, cooldownTimer: 0 }
+        };
+        let leftoverUIFrame = 0;
 
         // Input
         const keys = {};
@@ -658,6 +775,15 @@
             keys[e.key.toLowerCase()] = true;
             keys[e.code] = true;
             
+            if (e.key.toLowerCase() === 'q') {
+                e.preventDefault();
+                craftGravyShield();
+            }
+            if (e.key.toLowerCase() === 'e') {
+                e.preventDefault();
+                craftCranberryDash();
+            }
+
             if (e.code === 'Space') {
                 if (gameState === 'levelup') {
                     e.preventDefault();
@@ -677,6 +803,13 @@
             keys[e.key.toLowerCase()] = false;
             keys[e.code] = false;
         });
+        
+        if (craftGravyBtn) {
+            craftGravyBtn.addEventListener('click', () => craftGravyShield());
+        }
+        if (craftCranberryBtn) {
+            craftCranberryBtn.addEventListener('click', () => craftCranberryDash());
+        }
         
         // Peck attack function
         function tryPeckAttack() {
@@ -925,6 +1058,7 @@
 
         function startGame() {
             document.getElementById('startScreen').classList.add('hidden');
+            resetLeftovers();
             gameState = 'playing';
             resetLevel();
             gameLoop();
@@ -956,12 +1090,14 @@
             turkey.x = 300;
             turkey.y = 400;
             gameState = 'playing';
+            resetLeftovers();
             resetLevel();
         }
 
         function resetLevel() {
             apples = [];
             particles = [];
+            paradeConfetti = [];
             bossProjectiles = [];
             bomberBombs = [];
             auroraWaves = [];
@@ -970,6 +1106,7 @@
             hunter = null;
             bomber = null;
             barriers = [];
+            paradeFloat = null;
             xp = 0;
             bomberRoundsSurvived = 0;
             xpNeeded = (levels[currentLevel] && levels[currentLevel].xpNeeded) || 10;
@@ -977,7 +1114,14 @@
             turkey.y = 400;
             
             const shouldSpawnCollectibles = currentLevel !== 5;
-            const initialCollectibles = currentLevel === 4 ? 6 : 5;
+            let initialCollectibles = 5;
+            if (currentLevel === 4) {
+                initialCollectibles = 6;
+            } else if (currentLevel === 6) {
+                initialCollectibles = 8;
+            } else if (currentLevel === 7) {
+                initialCollectibles = 4;
+            }
             if (shouldSpawnCollectibles) {
                 for (let i = 0; i < initialCollectibles; i++) {
                     spawnApple();
@@ -994,6 +1138,13 @@
                 spawnBarriersForLevel(5);
                 queueBossFight(BOSS_TYPES.AURORA);
                 ensureAuroraAmbience(true);
+            } else if (currentLevel === 6) {
+                spawnCornMazeLevel();
+                turkey.x = BASE_WIDTH / 2;
+                turkey.y = BASE_HEIGHT - 120;
+            } else if (currentLevel === 7) {
+                spawnParadeWorkshop();
+                initParadeFloatBuilder();
             }
 
             updateUI();
@@ -1098,6 +1249,166 @@
             }
         }
 
+        function spawnCornMazeLevel() {
+            barriers = [];
+            const margin = 60;
+            const gapWidth = 120;
+            const rowConfigs = [
+                { y: 140, gapCenter: BASE_WIDTH / 2 },
+                { y: 240, gapCenter: BASE_WIDTH / 2 - 140 },
+                { y: 340, gapCenter: BASE_WIDTH / 2 + 140 },
+                { y: 440, gapCenter: BASE_WIDTH / 2 - 80 },
+                { y: 540, gapCenter: BASE_WIDTH / 2 + 60 }
+            ];
+
+            rowConfigs.forEach((row, index) => {
+                const leftWidth = row.gapCenter - gapWidth / 2 - margin;
+                if (leftWidth > 0) {
+                    barriers.push({
+                        x: margin + leftWidth / 2,
+                        y: row.y,
+                        width: leftWidth,
+                        height: 26,
+                        type: 'cornWall',
+                        solid: true,
+                        waveOffset: index * 0.4
+                    });
+                }
+
+                const rightWidth = BASE_WIDTH - margin - (row.gapCenter + gapWidth / 2);
+                if (rightWidth > 0) {
+                    barriers.push({
+                        x: BASE_WIDTH - margin - rightWidth / 2,
+                        y: row.y,
+                        width: rightWidth,
+                        height: 26,
+                        type: 'cornWall',
+                        solid: true,
+                        waveOffset: index * 0.5 + 0.3
+                    });
+                }
+            });
+
+            const verticalColumns = [
+                { x: margin + 30, top: 200, height: 360 },
+                { x: BASE_WIDTH - margin - 30, top: 220, height: 340 },
+                { x: BASE_WIDTH / 2 - 120, top: 180, height: 420 },
+                { x: BASE_WIDTH / 2 + 120, top: 260, height: 360 }
+            ];
+
+            verticalColumns.forEach((col, index) => {
+                barriers.push({
+                    x: col.x,
+                    y: col.top + col.height / 2,
+                    width: 28,
+                    height: col.height,
+                    type: 'cornWall',
+                    solid: true,
+                    waveOffset: index * 0.7
+                });
+            });
+
+            // add a couple of diagonal blockers to keep the player weaving
+            barriers.push(
+                { x: BASE_WIDTH / 2 - 170, y: 300, width: 90, height: 26, type: 'cornWall', solid: true, waveOffset: 2.3 },
+                { x: BASE_WIDTH / 2 + 170, y: 420, width: 90, height: 26, type: 'cornWall', solid: true, waveOffset: 2.6 }
+            );
+        }
+
+        function initParadeFloatBuilder() {
+            paradeFloat = {
+                partsBuilt: 0,
+                partsRequired: levels[7].xpNeeded,
+                stage: 0,
+                stageLabels: ['Chassis', 'Balloon Rigging', 'Light Show', 'Music Stack', 'Final Touches'],
+                status: 'Collect float parts scattered across the runway!'
+            };
+            paradeConfetti = [];
+        }
+
+        function incrementParadeFloat() {
+            if (!paradeFloat) return;
+            paradeFloat.partsBuilt++;
+            paradeFloat.stage = Math.min(paradeFloat.stageLabels.length - 1, paradeFloat.partsBuilt - 1);
+            const remaining = Math.max(0, paradeFloat.partsRequired - paradeFloat.partsBuilt);
+            paradeFloat.status = remaining > 0
+                ? `${paradeFloat.stageLabels[paradeFloat.stage]} complete! ${remaining} parts left.`
+                : 'Float ready! Return to center!';
+            spawnConfettiBurst(turkey.x, turkey.y);
+        }
+
+        function spawnConfettiBurst(x, y) {
+            for (let i = 0; i < 25; i++) {
+                paradeConfetti.push({
+                    x,
+                    y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: -Math.random() * 4 - 2,
+                    life: 1,
+                    color: ['#ff69b4', '#ffd700', '#7fffd4', '#ff7f50'][i % 4]
+                });
+            }
+        }
+
+        function updateParadeConfetti() {
+            for (let i = paradeConfetti.length - 1; i >= 0; i--) {
+                const confetti = paradeConfetti[i];
+                confetti.x += confetti.vx;
+                confetti.y += confetti.vy;
+                confetti.vy += 0.12;
+                confetti.life -= 0.02;
+                if (confetti.life <= 0 || confetti.y > BASE_HEIGHT) {
+                    paradeConfetti.splice(i, 1);
+                }
+            }
+        }
+
+        function spawnParadeWorkshop() {
+            barriers = [];
+            const stage = {
+                x: BASE_WIDTH / 2,
+                y: BASE_HEIGHT - 140,
+                width: 260,
+                height: 60,
+                type: 'floatStage',
+                solid: false
+            };
+            barriers.push(stage);
+
+            const balloonStacks = [
+                { x: BASE_WIDTH / 2 - 200, y: BASE_HEIGHT - 200 },
+                { x: BASE_WIDTH / 2 + 200, y: BASE_HEIGHT - 200 }
+            ];
+
+            balloonStacks.forEach(stack => {
+                barriers.push({
+                    x: stack.x,
+                    y: stack.y,
+                    width: 60,
+                    height: 140,
+                    type: 'balloonStack',
+                    solid: false
+                });
+            });
+
+            const railings = [
+                { x: BASE_WIDTH / 2, y: BASE_HEIGHT - 220 },
+                { x: BASE_WIDTH / 2, y: BASE_HEIGHT - 260 }
+            ];
+
+            railings.forEach((rail, index) => {
+                barriers.push({
+                    x: rail.x,
+                    y: rail.y,
+                    width: BASE_WIDTH - 120,
+                    height: 14,
+                    type: 'workshopRail',
+                    solid: false,
+                    waveOffset: index * 0.3
+                });
+            });
+        }
+
         function initBomberLevel() {
             bomber = {
                 x: BASE_WIDTH / 2,
@@ -1168,8 +1479,8 @@
             spawnParticles(bomb.x, bomb.y, '#FF4500', 20);
             const dist = Math.hypot(turkey.x - bomb.x, turkey.y - bomb.y);
             if (dist < bomb.explosionRadius) {
-                gameOver('The stealth bomber roasted you!');
-                return true;
+                const didFail = handleTurkeyDamage('The stealth bomber roasted you!');
+                return didFail;
             }
             bomberRoundsSurvived++;
             xp = bomberRoundsSurvived;
@@ -1271,13 +1582,23 @@
         }
 
         function spawnApple() {
-            apples.push({
-                x: Math.random() * (BASE_WIDTH - 100) + 50,
-                y: Math.random() * (BASE_HEIGHT - 150) + 50,
-                size: 25,
-                rotation: Math.random() * Math.PI * 2,
-                bobOffset: Math.random() * Math.PI * 2
-            });
+            let attempts = 0;
+            const maxAttempts = 25;
+            while (attempts < maxAttempts) {
+                const size = currentLevel === 7 ? 32 : 25;
+                const candidate = {
+                    x: Math.random() * (BASE_WIDTH - 100) + 50,
+                    y: Math.random() * (BASE_HEIGHT - 150) + 50,
+                    size,
+                    rotation: Math.random() * Math.PI * 2,
+                    bobOffset: Math.random() * Math.PI * 2
+                };
+                if (!isInsideSolidBarrier(candidate.x, candidate.y, size)) {
+                    apples.push(candidate);
+                    return;
+                }
+                attempts++;
+            }
         }
 
         function spawnParticles(x, y, color, count = 10) {
@@ -1319,6 +1640,130 @@
             }
         }
 
+        function gainLeftoverScraps(amount = LEFTOVER_CONFIG.scrapsPerFruit) {
+            leftoverBuffs.scraps += amount;
+            updateLeftoverUI('Scraps collected!');
+        }
+
+        function canUseLeftover(buffKey) {
+            const config = LEFTOVER_CONFIG[buffKey];
+            const buffState = leftoverBuffs[buffKey];
+            if (!config || !buffState) return false;
+            const affordable = leftoverBuffs.scraps >= config.cost;
+            const ready = buffState.activeTimer <= 0 && buffState.cooldownTimer <= 0;
+            return affordable && ready;
+        }
+
+        function craftGravyShield() {
+            if (!canUseLeftover('gravy')) {
+                updateLeftoverUI('Need more scraps or cooldown!');
+                return;
+            }
+            leftoverBuffs.scraps -= LEFTOVER_CONFIG.gravy.cost;
+            leftoverBuffs.gravy.activeTimer = LEFTOVER_CONFIG.gravy.duration;
+            leftoverBuffs.gravy.cooldownTimer = LEFTOVER_CONFIG.gravy.duration + LEFTOVER_CONFIG.gravy.cooldown;
+            spawnParticles(turkey.x, turkey.y, '#d2b48c', 20);
+            updateLeftoverUI('Gravy shield simmering!');
+        }
+
+        function craftCranberryDash() {
+            if (!canUseLeftover('cranberry')) {
+                updateLeftoverUI('Need more scraps or cooldown!');
+                return;
+            }
+            leftoverBuffs.scraps -= LEFTOVER_CONFIG.cranberry.cost;
+            leftoverBuffs.cranberry.activeTimer = LEFTOVER_CONFIG.cranberry.duration;
+            leftoverBuffs.cranberry.cooldownTimer = LEFTOVER_CONFIG.cranberry.duration + LEFTOVER_CONFIG.cranberry.cooldown;
+            spawnParticles(turkey.x, turkey.y, '#b11226', 18);
+            updateLeftoverUI('Cranberry dash brewed!');
+        }
+
+        function updateLeftoverUI(statusMessage = null) {
+            if (!leftoverScrapsEl) return;
+            leftoverScrapsEl.textContent = leftoverBuffs.scraps;
+
+            if (craftGravyBtn) {
+                craftGravyBtn.disabled = !canUseLeftover('gravy');
+                craftGravyBtn.textContent = `🛡️ Gravy Shield (${LEFTOVER_CONFIG.gravy.cost})`;
+            }
+            if (craftCranberryBtn) {
+                craftCranberryBtn.disabled = !canUseLeftover('cranberry');
+                craftCranberryBtn.textContent = `⚡ Cranberry Dash (${LEFTOVER_CONFIG.cranberry.cost})`;
+            }
+
+            if (!statusMessage) {
+                if (leftoverBuffs.gravy.activeTimer > 0) {
+                    statusMessage = '🛡️ Gravy shield active!';
+                } else if (leftoverBuffs.cranberry.activeTimer > 0) {
+                    statusMessage = '⚡ Cranberry dash active!';
+                } else if (leftoverBuffs.gravy.cooldownTimer > 0 || leftoverBuffs.cranberry.cooldownTimer > 0) {
+                    statusMessage = 'Leftovers cooling down...';
+                } else {
+                    statusMessage = 'Collect treats to cook buffs!';
+                }
+            }
+            if (leftoverStatusEl) {
+                leftoverStatusEl.textContent = statusMessage;
+            }
+        }
+
+        function handleTurkeyDamage(reason) {
+            if (leftoverBuffs.gravy.activeTimer > 0) {
+                leftoverBuffs.gravy.activeTimer = 0;
+                spawnParticles(turkey.x, turkey.y, '#f5deb3', 24);
+                updateLeftoverUI('Gravy shield saved you!');
+                return false;
+            }
+            gameOver(reason);
+            return true;
+        }
+
+        function resetLeftovers() {
+            leftoverBuffs.scraps = 0;
+            leftoverBuffs.gravy.activeTimer = 0;
+            leftoverBuffs.gravy.cooldownTimer = 0;
+            leftoverBuffs.cranberry.activeTimer = 0;
+            leftoverBuffs.cranberry.cooldownTimer = 0;
+            updateLeftoverUI('Leftovers reset. Start cooking!');
+        }
+
+        function enforceSolidBarriers() {
+            let adjusted = false;
+            barriers.forEach(barrier => {
+                if (!barrier.solid) return;
+                const halfW = barrier.width / 2;
+                const halfH = barrier.height / 2;
+                const dx = turkey.x - barrier.x;
+                const dy = turkey.y - barrier.y;
+                const overlapX = turkey.width / 2 + halfW - Math.abs(dx);
+                const overlapY = turkey.height / 2 + halfH - Math.abs(dy);
+                if (overlapX > 0 && overlapY > 0) {
+                    adjusted = true;
+                    if (overlapX < overlapY) {
+                        turkey.x += dx > 0 ? overlapX : -overlapX;
+                    } else {
+                        turkey.y += dy > 0 ? overlapY : -overlapY;
+                    }
+                }
+            });
+            if (adjusted) {
+                turkey.x = Math.max(turkey.width / 2, Math.min(BASE_WIDTH - turkey.width / 2, turkey.x));
+                turkey.y = Math.max(turkey.height / 2, Math.min(BASE_HEIGHT - turkey.height / 2 - 30, turkey.y));
+            }
+        }
+
+        function isInsideSolidBarrier(x, y, padding = 0) {
+            return barriers.some(barrier => {
+                if (!barrier.solid) return false;
+                return (
+                    x > barrier.x - barrier.width / 2 - padding &&
+                    x < barrier.x + barrier.width / 2 + padding &&
+                    y > barrier.y - barrier.height / 2 - padding &&
+                    y < barrier.y + barrier.height / 2 + padding
+                );
+            });
+        }
+
         function updateRoamingAuroras() {
             if (!roamingAuroras.length) return;
             const time = Date.now() * 0.001;
@@ -1344,8 +1789,20 @@
         function updateUI() {
             if (gameState === 'win' || !levels[currentLevel]) return;
             
-            scoreIconEl.textContent = currentLevel === 5 ? '🍍' : '🍎';
-            document.getElementById('levelDisplay').textContent = `Level ${currentLevel}: ${levels[currentLevel].name}`;
+            let scoreIcon = '🍎';
+            if (currentLevel === 5) {
+                scoreIcon = '🍍';
+            } else if (currentLevel === 6) {
+                scoreIcon = '🌽';
+            } else if (currentLevel === 7) {
+                scoreIcon = '🎪';
+            }
+            scoreIconEl.textContent = scoreIcon;
+            let levelLabel = `Level ${currentLevel}: ${levels[currentLevel].name}`;
+            if (currentLevel === 7 && paradeFloat) {
+                levelLabel += ` · ${paradeFloat.stageLabels[paradeFloat.stage]}`;
+            }
+            document.getElementById('levelDisplay').textContent = levelLabel;
             document.getElementById('scoreDisplay').textContent = score;
 
             let filled = xp;
@@ -1360,6 +1817,12 @@
                 filled = Math.max(0, boss.health);
                 needed = boss.maxHealth;
                 label = 'Boss HP';
+            } else if (currentLevel === 6) {
+                label = 'Maze XP';
+            } else if (currentLevel === 7 && paradeFloat) {
+                filled = paradeFloat.partsBuilt;
+                needed = paradeFloat.partsRequired;
+                label = 'Float Parts';
             }
 
             const xpPercent = needed > 0 ? Math.min(100, (filled / needed) * 100) : 0;
@@ -1379,12 +1842,23 @@
                 isPecking = false;
             }
 
+            // Update leftover timers
+            if (leftoverBuffs.gravy.activeTimer > 0) leftoverBuffs.gravy.activeTimer--;
+            if (leftoverBuffs.gravy.cooldownTimer > 0) leftoverBuffs.gravy.cooldownTimer--;
+            if (leftoverBuffs.cranberry.activeTimer > 0) leftoverBuffs.cranberry.activeTimer--;
+            if (leftoverBuffs.cranberry.cooldownTimer > 0) leftoverBuffs.cranberry.cooldownTimer--;
+            leftoverUIFrame++;
+            if (leftoverUIFrame % 12 === 0) {
+                updateLeftoverUI();
+            }
+
             // Move turkey
             let keyboardDx = 0;
             let keyboardDy = 0;
             let moveDx = 0;
             let moveDy = 0;
             let speedMultiplier = 1;
+            const cranberryBoost = leftoverBuffs.cranberry.activeTimer > 0 ? LEFTOVER_CONFIG.cranberry.speedBoost : 1;
             
             const keyLeft = keys['arrowleft'] || keys['a'] || keys['ArrowLeft'];
             const keyRight = keys['arrowright'] || keys['d'] || keys['ArrowRight'];
@@ -1418,9 +1892,13 @@
                 const len = Math.hypot(moveDx, moveDy);
                 moveDx /= len;
                 moveDy /= len;
-                turkey.x += moveDx * turkey.speed * speedMultiplier;
-                turkey.y += moveDy * turkey.speed * speedMultiplier;
+                turkey.x += moveDx * turkey.speed * speedMultiplier * cranberryBoost;
+                turkey.y += moveDy * turkey.speed * speedMultiplier * cranberryBoost;
                 turkey.direction = moveDx >= 0 ? 1 : -1;
+                
+                if (leftoverBuffs.cranberry.activeTimer > 0 && leftoverBuffs.cranberry.activeTimer % 5 === 0) {
+                    spawnParticles(turkey.x - moveDx * 20, turkey.y - moveDy * 20, '#b11226', 2);
+                }
             }
 
             if (currentLevel === 5 || (boss && boss.type === BOSS_TYPES.AURORA) || nextBossType === BOSS_TYPES.AURORA) {
@@ -1432,6 +1910,7 @@
 
             // Clamp position
             clampTurkeyToBounds();
+            enforceSolidBarriers();
 
             if (gameState === 'boss' && boss && peckCooldown === 0) {
                 const bossRadius = boss.type === BOSS_TYPES.AURORA ? boss.radius : boss.width / 2;
@@ -1453,6 +1932,7 @@
                     spawnParticles(apple.x, apple.y, leafColor, 4);
                     apples.splice(i, 1);
                     score++;
+                    gainLeftoverScraps();
                     
                     if (gameState === 'boss' && boss) {
                         const damage = boss.type === BOSS_TYPES.AURORA ? 2 : 1;
@@ -1462,6 +1942,12 @@
                         if (boss.health <= 0) {
                             spawnParticles(boss.x, boss.y, '#FFD700', 30);
                             boss = null;
+                            levelUp();
+                        }
+                    } else if (currentLevel === 7 && paradeFloat && gameState !== 'boss') {
+                        incrementParadeFloat();
+                        xp = paradeFloat.partsBuilt;
+                        if (xp >= xpNeeded) {
                             levelUp();
                         }
                     } else if (currentLevel !== 4 && gameState !== 'boss') {
@@ -1556,8 +2042,11 @@
                 const dist = Math.hypot(turkey.x - proj.x, turkey.y - proj.y);
                 if (dist < turkey.width / 2 + proj.size / 2) {
                     const message = proj.onHitMessage || (proj.isHunter ? 'You got shot!' : 'You were blasted!');
-                    gameOver(message);
-                    return;
+                    if (handleTurkeyDamage(message)) {
+                        return;
+                    }
+                    bossProjectiles.splice(i, 1);
+                    continue;
                 }
                 
                 // Check collision with barriers (projectiles get blocked)
@@ -1603,6 +2092,8 @@
                     auroraWaves.splice(i, 1);
                 }
             }
+
+            updateParadeConfetti();
         }
 
         function updatePumpkinBoss() {
@@ -1752,7 +2243,7 @@
             currentLevel++;
             turkey.evolution++;
             
-            if (currentLevel > 5) {
+            if (currentLevel > MAX_LEVEL) {
                 gameState = 'win';
                 document.getElementById('winScore').textContent = score;
                 document.getElementById('winScreen').classList.remove('hidden');
@@ -1887,6 +2378,59 @@
                     ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
                     break;
                 }
+                case 6: {
+                    gradient.addColorStop(0, '#1b1206');
+                    gradient.addColorStop(0.4, '#3b240b');
+                    gradient.addColorStop(1, '#1f1506');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = '#f2c94c22';
+                    for (let i = 0; i < 40; i++) {
+                        ctx.beginPath();
+                        const x = (i * 70 + (Date.now() / 50)) % (canvas.width + 100) - 50;
+                        const y = 80 + (i % 5) * 60;
+                        ctx.ellipse(x, y, 40, 14, Math.sin(i) * 0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    ctx.fillStyle = '#362003';
+                    ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+                    ctx.fillStyle = '#6f4c1b';
+                    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+                    break;
+                }
+                case 7: {
+                    gradient.addColorStop(0, '#1a0633');
+                    gradient.addColorStop(0.5, '#2f0d2a');
+                    gradient.addColorStop(1, '#000000');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // city skyline
+                    ctx.fillStyle = '#0d0314';
+                    for (let i = 0; i < 8; i++) {
+                        const width = 50 + (i * 13 % 50);
+                        const height = 120 + (i * 37 % 90);
+                        ctx.fillRect(i * 80, canvas.height - 120 - height, width, height);
+                        ctx.fillStyle = '#14041f';
+                    }
+                    
+                    // spotlight beams
+                    ctx.globalAlpha = 0.15;
+                    ctx.fillStyle = '#ffd700';
+                    ctx.beginPath();
+                    ctx.moveTo(canvas.width / 2 - 100, canvas.height);
+                    ctx.lineTo(canvas.width / 2 - 30, canvas.height - 300);
+                    ctx.lineTo(canvas.width / 2 + 40, canvas.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                    
+                    ctx.fillStyle = '#2b0b1d';
+                    ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+                    break;
+                }
                 default: {
                     gradient.addColorStop(0, '#1a1a2e');
                     gradient.addColorStop(1, '#16213e');
@@ -1924,6 +2468,18 @@
             ctx.save();
             ctx.translate(turkey.x, turkey.y);
             ctx.scale(turkey.direction, 1);
+            
+            if (leftoverBuffs.gravy.activeTimer > 0) {
+                const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.08;
+                ctx.save();
+                ctx.scale(1 / turkey.direction, 1);
+                ctx.globalAlpha = 0.6;
+                ctx.fillStyle = 'rgba(222,184,135,0.5)';
+                ctx.beginPath();
+                ctx.ellipse(0, 10, 45 * pulse, 30 * pulse, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
             
             const scale = 1 + (turkey.evolution - 1) * 0.2;
             ctx.scale(scale, scale);
@@ -2078,6 +2634,43 @@
                     ctx.ellipse((i - 1.5) * 5, -apple.size / 1.4 - i * 2, 6, 16, (i - 1.5) * 0.2, 0, Math.PI * 2);
                     ctx.fill();
                 }
+                ctx.restore();
+                return;
+            } else if (currentLevel === 6) {
+                ctx.fillStyle = '#f2c94c';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, apple.size / 2.4, apple.size / 1.2, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#d18e00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, -apple.size / 2);
+                ctx.lineTo(0, apple.size / 2);
+                ctx.moveTo(-apple.size / 4, -apple.size / 2);
+                ctx.lineTo(-apple.size / 4, apple.size / 2);
+                ctx.moveTo(apple.size / 4, -apple.size / 2);
+                ctx.lineTo(apple.size / 4, apple.size / 2);
+                ctx.stroke();
+                ctx.fillStyle = '#2d6a4f';
+                ctx.beginPath();
+                ctx.ellipse(-apple.size / 3, -apple.size / 2, 8, 18, -0.5, 0, Math.PI * 2);
+                ctx.ellipse(apple.size / 3, -apple.size / 2, 8, 18, 0.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                return;
+            } else if (currentLevel === 7) {
+                ctx.fillStyle = '#ff8fb1';
+                ctx.fillRect(-apple.size / 2, -apple.size / 2, apple.size, apple.size);
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(-apple.size / 2, -apple.size / 2, apple.size, apple.size);
+                ctx.strokeStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.moveTo(-apple.size / 2, 0);
+                ctx.lineTo(apple.size / 2, 0);
+                ctx.moveTo(0, -apple.size / 2);
+                ctx.lineTo(0, apple.size / 2);
+                ctx.stroke();
                 ctx.restore();
                 return;
             }
@@ -2529,6 +3122,45 @@
                     ctx.strokeStyle = 'rgba(255,255,255,0.7)';
                     ctx.lineWidth = 2;
                     ctx.strokeRect(-barrier.width / 2, -barrier.height / 2, barrier.width, barrier.height);
+                } else if (barrier.type === 'cornWall') {
+                    const time = Date.now() * 0.002;
+                    const sway = Math.sin(time + (barrier.waveOffset || 0)) * 5;
+                    ctx.fillStyle = '#f4d03f';
+                    ctx.beginPath();
+                    ctx.moveTo(-barrier.width / 2, -barrier.height / 2);
+                    ctx.lineTo(barrier.width / 2, -barrier.height / 2);
+                    ctx.lineTo(barrier.width / 2 + sway, barrier.height / 2);
+                    ctx.lineTo(-barrier.width / 2 + sway, barrier.height / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#8e6b1a';
+                    ctx.lineWidth = 2;
+                    for (let stalkX = -barrier.width / 2 + 10; stalkX < barrier.width / 2; stalkX += 15) {
+                        ctx.beginPath();
+                        ctx.moveTo(stalkX, -barrier.height / 2);
+                        ctx.lineTo(stalkX + sway * 0.2, barrier.height / 2);
+                        ctx.stroke();
+                    }
+                } else if (barrier.type === 'floatStage') {
+                    ctx.fillStyle = '#4c1b2f';
+                    ctx.fillRect(-barrier.width / 2, -barrier.height / 2, barrier.width, barrier.height);
+                    ctx.fillStyle = '#ffefc1';
+                    ctx.fillRect(-barrier.width / 2, -barrier.height / 2 - 14, barrier.width, 14);
+                } else if (barrier.type === 'balloonStack') {
+                    const colors = ['#ff8fb1', '#ffd166', '#7df9ff'];
+                    for (let b = 0; b < 3; b++) {
+                        ctx.fillStyle = colors[b % colors.length];
+                        ctx.beginPath();
+                        ctx.arc((b - 1) * 12, -barrier.height / 2 + b * 28, 24, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(-3, -barrier.height / 2, 6, barrier.height);
+                } else if (barrier.type === 'workshopRail') {
+                    const wobble = Math.sin(Date.now() * 0.003 + (barrier.waveOffset || 0)) * 4;
+                    ctx.fillStyle = '#ff8fb1';
+                    ctx.fillRect(-barrier.width / 2, -barrier.height / 2 + wobble, barrier.width, barrier.height);
                 }
                 
                 ctx.restore();
@@ -2710,6 +3342,15 @@
             ctx.globalAlpha = 1;
         }
 
+        function drawParadeConfetti() {
+            paradeConfetti.forEach(piece => {
+                ctx.globalAlpha = Math.max(0, piece.life);
+                ctx.fillStyle = piece.color;
+                ctx.fillRect(piece.x, piece.y, 4, 4);
+            });
+            ctx.globalAlpha = 1;
+        }
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
@@ -2736,6 +3377,7 @@
                     drawBomber();
                 }
                 drawParticles();
+                drawParadeConfetti();
             }
         }
 
@@ -2746,6 +3388,7 @@
         }
 
         // Initialize
+        updateLeftoverUI();
         draw();
     </script>
 </body>

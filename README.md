@@ -51,6 +51,12 @@ A cloaked B-2 bomber patrols the skies and drops a single mega bomb every 20 sec
 ### Level 5: Northern Lights Siege 🌌
 The final boss is a massive northern light monster that fires aurora orbs. When it arrives, glowing evergreens spawn so you can hide while it charges. Pineapples replace apples in this phase—use them (and your peck attack) to chip away at the monster’s health and survive the night!
 
+### Level 6: Corn Maze Migration 🌽
+After escaping the aurora beast, weave through a living corn labyrinth. The walls sway in the wind and block your path, so you’ll need to find the winding lane, harvest glowing cobs, and stay mobile.
+
+### Level 7: Parade Float Builder 🎪
+Cap off the journey on a moonlit parade runway. Collect float parts, bolt them onto the stage, and trigger confetti bursts while you assemble the turkey’s victory float before sunrise.
+
 ## ✨ Features
 
 - **Big-mouthed turkey** character with animated chomping
@@ -60,6 +66,9 @@ The final boss is a massive northern light monster that fires aurora orbs. When 
 - **Boss fight** against an evil Pumpkin Pie
 - **Hunter AI** that tracks and shoots at you
 - **XP progression bar** to track your progress
+- **Leftovers Lab** lets you spend scraps on Gravy Shields and Cranberry Dash boosts
+- **Corn maze gauntlet** with solid stalk barriers that reshape the mid-game challenge
+- **Parade float builder finale** complete with confetti bursts and stage props
 - **Autumn-themed** aesthetic with warm colors
 - **🥽 VR Support** - Play in virtual reality with WebXR!
 - **First-person 3D mode** - Experience Thanksgiving as the turkey
