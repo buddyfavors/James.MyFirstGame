@@ -549,6 +549,8 @@
         // Base canvas dimensions (used for game logic)
         let BASE_WIDTH = window.innerWidth || 600;
         let BASE_HEIGHT = window.innerHeight || 800;
+        const FLOOR_PADDING = 30;
+        const BOMBER_GROUND_BAND_HEIGHT = 140;
 
         const BOSS_TYPES = {
             PUMPKIN: 'pumpkinPie',
@@ -599,6 +601,29 @@
             direction: 1,
             evolution: 1
         };
+
+        function getTurkeyVerticalBounds() {
+            const minY = turkey.height / 2;
+            const maxY = BASE_HEIGHT - turkey.height / 2 - FLOOR_PADDING;
+            if (currentLevel === 4 && gameState === 'playing') {
+                const groundTop = Math.max(minY, BASE_HEIGHT - BOMBER_GROUND_BAND_HEIGHT);
+                return { minY: groundTop, maxY };
+            }
+            return { minY, maxY };
+        }
+
+        function clampTurkeyToBounds() {
+            const horizontalMin = turkey.width / 2;
+            const horizontalMax = BASE_WIDTH - turkey.width / 2;
+            turkey.x = Math.max(horizontalMin, Math.min(horizontalMax, turkey.x));
+            const { minY, maxY } = getTurkeyVerticalBounds();
+            turkey.y = Math.max(minY, Math.min(maxY, turkey.y));
+        }
+
+        function placeTurkeyOnGroundBand() {
+            const { minY, maxY } = getTurkeyVerticalBounds();
+            turkey.y = (minY + maxY) / 2;
+        }
 
         // Apples
         let apples = [];
@@ -830,8 +855,7 @@
             canvasScale = 1;
 
             // Ensure turkey stays in bounds after resize
-            turkey.x = Math.min(Math.max(turkey.width / 2, turkey.x), BASE_WIDTH - turkey.width / 2);
-            turkey.y = Math.min(Math.max(turkey.height / 2, turkey.y), BASE_HEIGHT - turkey.height / 2 - 30);
+            clampTurkeyToBounds();
 
             if (currentLevel === 5 || (boss && boss.type === BOSS_TYPES.AURORA) || nextBossType === BOSS_TYPES.AURORA) {
                 ensureAuroraAmbience(true);
@@ -965,6 +989,7 @@
             } else if (currentLevel === 4) {
                 spawnBarriersForLevel(4);
                 initBomberLevel();
+                placeTurkeyOnGroundBand();
             } else if (currentLevel === 5) {
                 spawnBarriersForLevel(5);
                 queueBossFight(BOSS_TYPES.AURORA);
@@ -1406,8 +1431,15 @@
             turkey.mouthOpen = Math.sin(Date.now() / 100) * 0.3 + 0.3;
 
             // Clamp position
-            turkey.x = Math.max(turkey.width / 2, Math.min(BASE_WIDTH - turkey.width / 2, turkey.x));
-            turkey.y = Math.max(turkey.height / 2, Math.min(BASE_HEIGHT - turkey.height / 2 - 30, turkey.y));
+            clampTurkeyToBounds();
+
+            if (gameState === 'boss' && boss && peckCooldown === 0) {
+                const bossRadius = boss.type === BOSS_TYPES.AURORA ? boss.radius : boss.width / 2;
+                const distToBoss = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
+                if (distToBoss < PECK_RANGE + bossRadius) {
+                    tryPeckAttack();
+                }
+            }
 
             // Check apple collisions
             for (let i = apples.length - 1; i >= 0; i--) {
@@ -1507,8 +1539,18 @@
             // Update projectiles
             for (let i = bossProjectiles.length - 1; i >= 0; i--) {
                 const proj = bossProjectiles[i];
+                if (typeof proj.life === 'number') {
+                    proj.life--;
+                    if (proj.life <= 0) {
+                        bossProjectiles.splice(i, 1);
+                        continue;
+                    }
+                }
                 proj.x += proj.vx;
                 proj.y += proj.vy;
+                if (proj.type === 'auroraStreak') {
+                    proj.trailLength = Math.max(60, (proj.trailLength || 140) * 0.99);
+                }
 
                 // Check collision with turkey
                 const dist = Math.hypot(turkey.x - proj.x, turkey.y - proj.y);
@@ -1675,6 +1717,27 @@
                 spawnParticles(boss.x, boss.y, '#7FFFD4', 12);
             }
 
+            if (boss.attackTimer % 120 === 0) {
+                const streaks = 2;
+                const baseAngle = Math.atan2(turkey.y - boss.y, turkey.x - boss.x);
+                for (let i = 0; i < streaks; i++) {
+                    const offset = (i - (streaks - 1) / 2) * 0.25;
+                    bossProjectiles.push({
+                        x: boss.x,
+                        y: boss.y,
+                        vx: Math.cos(baseAngle + offset) * 6.5,
+                        vy: Math.sin(baseAngle + offset) * 6.5,
+                        size: 14,
+                        type: 'auroraStreak',
+                        trailLength: 170,
+                        life: 240,
+                        color: `hsl(${200 + i * 35}, 90%, 70%)`,
+                        onHitMessage: 'A light streak vaporized you!'
+                    });
+                }
+                spawnParticles(boss.x, boss.y, '#a855ff', 18);
+            }
+
             if (boss.attackTimer % 180 === 0) {
                 auroraWaves.push({
                     x: boss.x,
@@ -1733,12 +1796,20 @@
                     }
                     
                     ctx.fillStyle = '#DAA520';
-                    for (let i = 0; i < 40; i++) {
+                    const haySpacing = 25;
+                    const hayCount = Math.ceil(canvas.width / haySpacing) + 5;
+                    for (let i = 0; i < hayCount; i++) {
                         ctx.beginPath();
+                        const x = (i * haySpacing) % canvas.width;
+                        const waveOffset = Math.sin(i * 0.5) * 10;
                         ctx.ellipse(
-                            (i * 25) % canvas.width,
-                            canvas.height - 30 + Math.sin(i) * 10,
-                            20, 8, 0, 0, Math.PI * 2
+                            x,
+                            canvas.height - 30 + waveOffset,
+                            20,
+                            8,
+                            0,
+                            0,
+                            Math.PI * 2
                         );
                         ctx.fill();
                     }
@@ -1754,12 +1825,15 @@
                     ctx.fillStyle = '#228B22';
                     ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
                     
-                    for (let i = 0; i < 4; i++) {
-                        const tx = i * 160 + 50;
+                    const canopyColors = ['#FF6347', '#FF8C00', '#FFD700', '#DC143C'];
+                    const groveCount = Math.max(4, Math.ceil(canvas.width / 160));
+                    const groveSpacing = canvas.width / groveCount;
+                    for (let i = 0; i < groveCount; i++) {
+                        const tx = groveSpacing * i + groveSpacing / 2;
                         ctx.fillStyle = '#5D3A1A';
                         ctx.fillRect(tx - 10, canvas.height - 180, 20, 100);
                         ctx.beginPath();
-                        ctx.fillStyle = ['#FF6347', '#FF8C00', '#FFD700', '#DC143C'][i % 4];
+                        ctx.fillStyle = canopyColors[i % canopyColors.length];
                         ctx.arc(tx, canvas.height - 200, 50, 0, Math.PI * 2);
                         ctx.fill();
                     }
@@ -1772,14 +1846,19 @@
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     
                     ctx.fillStyle = '#ffffff22';
-                    for (let i = 0; i < 80; i++) {
+                    const starCount = Math.max(80, Math.ceil(canvas.width / 10));
+                    for (let i = 0; i < starCount; i++) {
                         ctx.beginPath();
-                        ctx.arc(Math.random() * canvas.width, Math.random() * 200, Math.random() * 2, 0, Math.PI * 2);
+                        const x = (i * 53) % canvas.width;
+                        const y = (i * 97) % 200;
+                        const radius = (i % 3) * 0.6 + 0.5;
+                        ctx.arc(x, y, radius, 0, Math.PI * 2);
                         ctx.fill();
                     }
                     
+                    const groundHeight = Math.max(60, canvas.height * 0.1);
                     ctx.fillStyle = '#1a3a1a';
-                    ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+                    ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
                     break;
                 }
                 case 5: {
@@ -1816,21 +1895,27 @@
                     
                     ctx.fillStyle = '#FFFACD';
                     ctx.beginPath();
-                    ctx.arc(500, 80, 40, 0, Math.PI * 2);
+                    const sunX = canvas.width * 0.65;
+                    const sunRadius = Math.max(40, canvas.width * 0.04);
+                    ctx.arc(sunX, 80, sunRadius, 0, Math.PI * 2);
                     ctx.fill();
                     
                     ctx.fillStyle = '#0f0f23';
-                    for (let i = 0; i < 6; i++) {
-                        const tx = i * 100;
+                    const mountainCount = Math.max(6, Math.ceil(canvas.width / 120));
+                    const mountainWidth = canvas.width / mountainCount;
+                    for (let i = 0; i < mountainCount; i++) {
+                        const tx = i * mountainWidth;
+                        const peakHeight = 200 + Math.sin(i * 0.8) * 60;
                         ctx.beginPath();
                         ctx.moveTo(tx, canvas.height);
-                        ctx.lineTo(tx + 40, canvas.height - 250 - Math.random() * 100);
-                        ctx.lineTo(tx + 80, canvas.height);
+                        ctx.lineTo(tx + mountainWidth / 2, canvas.height - peakHeight);
+                        ctx.lineTo(tx + mountainWidth, canvas.height);
                         ctx.fill();
                     }
                     
                     ctx.fillStyle = '#2d4a3e';
-                    ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+                    const meadowHeight = Math.max(60, canvas.height * 0.08);
+                    ctx.fillRect(0, canvas.height - meadowHeight, canvas.width, meadowHeight);
                 }
             }
         }
@@ -2571,6 +2656,24 @@
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
                     ctx.ellipse(0, 0, proj.size, proj.size / 2, Math.atan2(proj.vy, proj.vx), 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (proj.type === 'auroraStreak') {
+                    const angle = Math.atan2(proj.vy, proj.vx);
+                    const tailLength = proj.trailLength || 140;
+                    ctx.rotate(angle);
+                    ctx.lineWidth = 6;
+                    const gradient = ctx.createLinearGradient(0, 0, -tailLength, 0);
+                    gradient.addColorStop(0, proj.color || '#7FFFD4');
+                    gradient.addColorStop(0.7, 'rgba(168,85,255,0.6)');
+                    gradient.addColorStop(1, 'rgba(8,16,32,0)');
+                    ctx.strokeStyle = gradient;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-tailLength, 0);
+                    ctx.stroke();
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, proj.size, 0, Math.PI * 2);
                     ctx.fill();
                 } else if (proj.type === 'aurora') {
                     const gradient = ctx.createRadialGradient(0, 0, 2, 0, 0, proj.size);
