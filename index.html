@@ -83,6 +83,66 @@
             text-shadow: 2px 2px 0 var(--bark);
         }
 
+        .speed-boost-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(61, 41, 20, 0.85);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 2px solid var(--harvest-gold);
+            font-size: 16px;
+            color: var(--cream);
+            transition: all 0.3s ease;
+        }
+
+        .speed-boost-indicator.ready {
+            border-color: #FFD700;
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.7), 0 0 24px rgba(255, 165, 0, 0.5), inset 0 0 8px rgba(255, 215, 0, 0.3);
+            animation: speed-ready-pulse 1.2s ease-in-out infinite;
+        }
+
+        .speed-boost-indicator.active {
+            border-color: #b11226;
+            background: linear-gradient(135deg, rgba(177, 18, 38, 0.9), rgba(139, 0, 0, 0.8));
+            box-shadow: 0 0 16px rgba(255, 50, 50, 0.8), 0 0 32px rgba(177, 18, 38, 0.5);
+            animation: speed-active-glow 0.4s ease-in-out infinite alternate;
+        }
+
+        .speed-boost-indicator.cooldown {
+            opacity: 0.6;
+            border-color: #666;
+        }
+
+        @keyframes speed-ready-pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 12px rgba(255, 215, 0, 0.7), 0 0 24px rgba(255, 165, 0, 0.5);
+            }
+            50% {
+                transform: scale(1.08);
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.9), 0 0 40px rgba(255, 165, 0, 0.7);
+            }
+        }
+
+        @keyframes speed-active-glow {
+            0% {
+                box-shadow: 0 0 16px rgba(255, 50, 50, 0.8), 0 0 32px rgba(177, 18, 38, 0.5);
+            }
+            100% {
+                box-shadow: 0 0 24px rgba(255, 100, 100, 1), 0 0 48px rgba(177, 18, 38, 0.8);
+            }
+        }
+
+        .speed-icon {
+            font-size: 18px;
+        }
+
+        .speed-count {
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
         .xp-bar-container {
             position: absolute;
             bottom: 15px;
@@ -96,82 +156,6 @@
             border: 3px solid var(--harvest-gold);
             overflow: hidden;
             box-shadow: inset 0 3px 10px rgba(0,0,0,0.5);
-        }
-
-        .leftover-panel {
-            position: absolute;
-            bottom: 100px;
-            left: 20px;
-            width: 210px;
-            padding: 12px 14px;
-            border-radius: 18px;
-            background: rgba(61, 41, 20, 0.8);
-            border: 2px solid var(--harvest-gold);
-            color: var(--cream);
-            font-size: 14px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.35);
-            pointer-events: auto;
-        }
-
-        .leftover-panel h3 {
-            font-family: 'Caveat', cursive;
-            font-size: 22px;
-            margin: 0 0 6px;
-            color: var(--pumpkin);
-        }
-
-        .leftover-scraps {
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            margin-bottom: 8px;
-        }
-
-        .leftover-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .leftover-btn {
-            font-family: 'Fraunces', serif;
-            font-size: 14px;
-            padding: 8px 10px;
-            border-radius: 14px;
-            border: 2px solid var(--harvest-gold);
-            background: linear-gradient(135deg, rgba(255,117,24,0.8), rgba(210,105,30,0.8));
-            color: var(--cream);
-            cursor: pointer;
-            transition: transform 0.15s ease, opacity 0.15s ease;
-        }
-
-        .leftover-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        .leftover-status {
-            margin-top: 6px;
-            font-size: 12px;
-            color: var(--harvest-gold);
-            min-height: 30px;
-        }
-
-        @media (max-width: 600px) {
-            .leftover-panel {
-                width: calc(100% - 40px);
-                left: 50%;
-                transform: translateX(-50%);
-                bottom: 90px;
-            }
-            .leftover-actions {
-                flex-direction: row;
-                flex-wrap: wrap;
-            }
-            .leftover-btn {
-                flex: 1 1 48%;
-                font-size: 12px;
-                padding: 6px 4px;
-            }
         }
 
         .xp-bar {
@@ -207,6 +191,15 @@
             
             .score-display {
                 font-size: 18px;
+            }
+
+            .speed-boost-indicator {
+                padding: 4px 10px;
+                font-size: 14px;
+            }
+
+            .speed-icon {
+                font-size: 14px;
             }
             
             .xp-bar-container {
@@ -531,6 +524,10 @@
         
         <div class="ui-overlay">
             <div class="level-display" id="levelDisplay">Level 1: Barn Turkey</div>
+            <div class="speed-boost-indicator" id="speedBoostIndicator">
+                <span class="speed-icon">⚡</span>
+                <span class="speed-count" id="speedBoostCount">0/4</span>
+            </div>
             <div class="score-display"><span id="scoreIcon" aria-hidden="true">🍎</span> <span id="scoreDisplay">0</span></div>
         </div>
         
@@ -539,14 +536,6 @@
             <div class="xp-text" id="xpText">0 / 10 XP</div>
         </div>
 
-        <section class="leftover-panel" aria-live="polite">
-            <h3>Leftovers Lab</h3>
-            <div class="leftover-scraps"><span id="leftoverScraps">0</span> scraps</div>
-            <div class="leftover-actions">
-                <button class="leftover-btn" id="craftCranberryBtn">⚡ Speed Boost</button>
-            </div>
-            <div class="leftover-status" id="leftoverStatus">Collect treats to charge your Speed Boost!</div>
-        </section>
 
         <div class="start-screen" id="startScreen">
             <div class="turkey-emoji">🦃</div>
@@ -607,9 +596,8 @@
         const scoreIconEl = document.getElementById('scoreIcon');
         const levelCountdownEl = document.getElementById('levelCountdown');
         const versionBadgeEl = document.getElementById('versionBadge');
-        const leftoverScrapsEl = document.getElementById('leftoverScraps');
-        const leftoverStatusEl = document.getElementById('leftoverStatus');
-        const craftCranberryBtn = document.getElementById('craftCranberryBtn');
+        const speedBoostIndicatorEl = document.getElementById('speedBoostIndicator');
+        const speedBoostCountEl = document.getElementById('speedBoostCount');
 
         const VERSION = Object.freeze({
             major: 1,
@@ -836,10 +824,6 @@
             keys[e.key.toLowerCase()] = false;
             keys[e.code] = false;
         });
-        
-        if (craftCranberryBtn) {
-            craftCranberryBtn.addEventListener('click', () => craftCranberryDash());
-        }
         
         // Peck attack function
         function tryPeckAttack() {
@@ -1511,45 +1495,140 @@
             const cols = Math.floor(BASE_WIDTH / cellSize);
             const rows = Math.floor(BASE_HEIGHT / cellSize);
             const wallThickness = 22;
+            // Door opening must be wide enough for the turkey to fit through (turkey width is 60px default, 48px in maze)
+            const minDoorWidth = 85;
             
-            // Create outer walls with random door openings
-            // Top wall
+            // Create complete outer walls with door openings on all four sides
+            
+            // TOP WALL - complete with 1-2 door openings
+            const topDoorCount = 1 + Math.floor(Math.random() * 2);
+            const topDoorPositions = [];
+            for (let d = 0; d < topDoorCount; d++) {
+                topDoorPositions.push(BASE_WIDTH * (0.3 + d * 0.4) + (Math.random() - 0.5) * 80);
+            }
+            topDoorPositions.sort((a, b) => a - b);
+            
             let x = 0;
-            while (x < BASE_WIDTH) {
-                const segmentWidth = cellSize + Math.random() * cellSize;
-                if (Math.random() > doorChance || x === 0) {
+            for (let doorIdx = 0; doorIdx <= topDoorPositions.length; doorIdx++) {
+                const doorX = doorIdx < topDoorPositions.length ? topDoorPositions[doorIdx] : BASE_WIDTH;
+                const segmentEnd = doorX - minDoorWidth / 2;
+                if (segmentEnd > x) {
                     barriers.push({
-                        x: x + segmentWidth / 2,
+                        x: (x + segmentEnd) / 2,
                         y: 40,
-                        width: Math.min(segmentWidth, BASE_WIDTH - x),
+                        width: segmentEnd - x,
                         height: wallThickness,
                         type: wallType,
                         solid: true,
                         waveOffset: x * 0.01
                     });
                 }
-                x += segmentWidth + 60;
+                x = doorX + minDoorWidth / 2;
             }
             
-            // Bottom wall
+            // BOTTOM WALL - complete with 1-2 door openings
+            const bottomDoorCount = 1 + Math.floor(Math.random() * 2);
+            const bottomDoorPositions = [];
+            for (let d = 0; d < bottomDoorCount; d++) {
+                bottomDoorPositions.push(BASE_WIDTH * (0.3 + d * 0.4) + (Math.random() - 0.5) * 80);
+            }
+            bottomDoorPositions.sort((a, b) => a - b);
+            
             x = 0;
-            while (x < BASE_WIDTH) {
-                const segmentWidth = cellSize + Math.random() * cellSize;
-                if (Math.random() > doorChance) {
+            for (let doorIdx = 0; doorIdx <= bottomDoorPositions.length; doorIdx++) {
+                const doorX = doorIdx < bottomDoorPositions.length ? bottomDoorPositions[doorIdx] : BASE_WIDTH;
+                const segmentEnd = doorX - minDoorWidth / 2;
+                if (segmentEnd > x) {
                     barriers.push({
-                        x: x + segmentWidth / 2,
+                        x: (x + segmentEnd) / 2,
                         y: BASE_HEIGHT - 50,
-                        width: Math.min(segmentWidth, BASE_WIDTH - x),
+                        width: segmentEnd - x,
                         height: wallThickness,
                         type: wallType,
                         solid: true,
                         waveOffset: x * 0.01
                     });
                 }
-                x += segmentWidth + 60;
+                x = doorX + minDoorWidth / 2;
             }
             
-            // Interior maze walls - horizontal rows with random gaps
+            // LEFT WALL - complete with 1-2 door openings
+            const leftDoorCount = 1 + Math.floor(Math.random() * 2);
+            const leftDoorPositions = [];
+            for (let d = 0; d < leftDoorCount; d++) {
+                leftDoorPositions.push(BASE_HEIGHT * (0.25 + d * 0.35) + (Math.random() - 0.5) * 60);
+            }
+            leftDoorPositions.sort((a, b) => a - b);
+            
+            let y = 60; // Start below top wall
+            for (let doorIdx = 0; doorIdx <= leftDoorPositions.length; doorIdx++) {
+                const doorY = doorIdx < leftDoorPositions.length ? leftDoorPositions[doorIdx] : BASE_HEIGHT - 70;
+                const segmentEnd = doorY - minDoorWidth / 2;
+                if (segmentEnd > y) {
+                    barriers.push({
+                        x: 15,
+                        y: (y + segmentEnd) / 2,
+                        width: wallThickness,
+                        height: segmentEnd - y,
+                        type: wallType,
+                        solid: true,
+                        waveOffset: y * 0.01
+                    });
+                }
+                y = doorY + minDoorWidth / 2;
+            }
+            // Final segment to bottom
+            if (y < BASE_HEIGHT - 70) {
+                barriers.push({
+                    x: 15,
+                    y: (y + BASE_HEIGHT - 70) / 2,
+                    width: wallThickness,
+                    height: BASE_HEIGHT - 70 - y,
+                    type: wallType,
+                    solid: true,
+                    waveOffset: y * 0.01
+                });
+            }
+            
+            // RIGHT WALL - complete with 1-2 door openings
+            const rightDoorCount = 1 + Math.floor(Math.random() * 2);
+            const rightDoorPositions = [];
+            for (let d = 0; d < rightDoorCount; d++) {
+                rightDoorPositions.push(BASE_HEIGHT * (0.25 + d * 0.35) + (Math.random() - 0.5) * 60);
+            }
+            rightDoorPositions.sort((a, b) => a - b);
+            
+            y = 60; // Start below top wall
+            for (let doorIdx = 0; doorIdx <= rightDoorPositions.length; doorIdx++) {
+                const doorY = doorIdx < rightDoorPositions.length ? rightDoorPositions[doorIdx] : BASE_HEIGHT - 70;
+                const segmentEnd = doorY - minDoorWidth / 2;
+                if (segmentEnd > y) {
+                    barriers.push({
+                        x: BASE_WIDTH - 15,
+                        y: (y + segmentEnd) / 2,
+                        width: wallThickness,
+                        height: segmentEnd - y,
+                        type: wallType,
+                        solid: true,
+                        waveOffset: y * 0.01
+                    });
+                }
+                y = doorY + minDoorWidth / 2;
+            }
+            // Final segment to bottom
+            if (y < BASE_HEIGHT - 70) {
+                barriers.push({
+                    x: BASE_WIDTH - 15,
+                    y: (y + BASE_HEIGHT - 70) / 2,
+                    width: wallThickness,
+                    height: BASE_HEIGHT - 70 - y,
+                    type: wallType,
+                    solid: true,
+                    waveOffset: y * 0.01
+                });
+            }
+            
+            // Interior maze walls - horizontal rows with random gaps (doors wide enough for turkey)
             const rowYPositions = [
                 BASE_HEIGHT * 0.25,
                 BASE_HEIGHT * 0.45,
@@ -1558,9 +1637,9 @@
             ];
             
             rowYPositions.forEach((rowY, rowIndex) => {
-                // Create segments with random gaps (doors)
+                // Create segments with gaps (doors) wide enough for turkey
                 const numSegments = 3 + Math.floor(Math.random() * 2);
-                const gapWidth = 70 + Math.random() * 40;
+                const gapWidth = minDoorWidth + Math.random() * 20; // Door width at least minDoorWidth
                 const totalGaps = numSegments - 1;
                 const totalGapWidth = gapWidth * totalGaps;
                 const segmentWidth = (BASE_WIDTH - totalGapWidth - 80) / numSegments;
@@ -2009,7 +2088,7 @@
 
         function gainLeftoverScraps(amount = LEFTOVER_CONFIG.scrapsPerFruit) {
             leftoverBuffs.scraps += amount;
-            updateLeftoverUI('Scraps collected!');
+            updateLeftoverUI();
         }
 
         function canUseLeftover(buffKey) {
@@ -2024,14 +2103,13 @@
 
         function craftCranberryDash() {
             if (!canUseLeftover('cranberry')) {
-                updateLeftoverUI('Need more scraps or cooldown!');
                 return;
             }
             leftoverBuffs.scraps -= LEFTOVER_CONFIG.cranberry.cost;
             leftoverBuffs.cranberry.activeTimer = LEFTOVER_CONFIG.cranberry.duration;
             leftoverBuffs.cranberry.cooldownTimer = LEFTOVER_CONFIG.cranberry.duration + LEFTOVER_CONFIG.cranberry.cooldown;
             spawnParticles(turkey.x, turkey.y, '#b11226', 18);
-            updateLeftoverUI('Cranberry dash brewed!');
+            updateLeftoverUI();
         }
 
         function activateContextAbility() {
@@ -2039,32 +2117,27 @@
         }
 
         function updateLeftoverUI(statusMessage = null) {
-            if (!leftoverScrapsEl) return;
-            leftoverScrapsEl.textContent = leftoverBuffs.scraps;
-
-            if (craftCranberryBtn) {
-                craftCranberryBtn.style.display = '';
-                craftCranberryBtn.disabled = !canUseLeftover('cranberry');
-                craftCranberryBtn.textContent = `⚡ Speed Boost (${LEFTOVER_CONFIG.cranberry.cost})`;
-            }
-
-            if (!statusMessage) {
-                const abilityState = leftoverBuffs.cranberry;
-                const abilityConfig = LEFTOVER_CONFIG.cranberry;
-                const abilityEmoji = '⚡';
-                const abilityName = 'Speed Boost';
-                if (abilityState.activeTimer > 0) {
-                    statusMessage = `${abilityEmoji} ${abilityName} active!`;
-                } else if (abilityState.cooldownTimer > 0) {
-                    statusMessage = `${abilityEmoji} ${abilityName} cooling down...`;
-                } else if (leftoverBuffs.scraps >= abilityConfig.cost) {
-                    statusMessage = `${abilityEmoji} ${abilityName} ready!`;
-                } else {
-                    statusMessage = `Collect treats for ${abilityName}!`;
-                }
-            }
-            if (leftoverStatusEl) {
-                leftoverStatusEl.textContent = statusMessage;
+            if (!speedBoostIndicatorEl || !speedBoostCountEl) return;
+            
+            const abilityState = leftoverBuffs.cranberry;
+            const abilityConfig = LEFTOVER_CONFIG.cranberry;
+            const cost = abilityConfig.cost;
+            
+            // Update the counter display
+            speedBoostCountEl.textContent = `${leftoverBuffs.scraps}/${cost}`;
+            
+            // Update visual state classes
+            speedBoostIndicatorEl.classList.remove('ready', 'active', 'cooldown');
+            
+            if (abilityState.activeTimer > 0) {
+                // Speed boost is currently active
+                speedBoostIndicatorEl.classList.add('active');
+            } else if (abilityState.cooldownTimer > 0) {
+                // On cooldown
+                speedBoostIndicatorEl.classList.add('cooldown');
+            } else if (leftoverBuffs.scraps >= cost) {
+                // Ready to use - add pulsing glow effect
+                speedBoostIndicatorEl.classList.add('ready');
             }
         }
 
@@ -2077,7 +2150,7 @@
             leftoverBuffs.scraps = 0;
             leftoverBuffs.cranberry.activeTimer = 0;
             leftoverBuffs.cranberry.cooldownTimer = 0;
-            updateLeftoverUI('Leftovers reset. Start cooking!');
+            updateLeftoverUI();
         }
 
         function enforceSolidBarriers() {
@@ -2953,6 +3026,38 @@
 
         function drawTurkey() {
             ctx.save();
+            
+            // Draw speed boost glow effect behind turkey when ready or active
+            const abilityState = leftoverBuffs.cranberry;
+            const abilityConfig = LEFTOVER_CONFIG.cranberry;
+            const isSpeedReady = abilityState.activeTimer <= 0 && abilityState.cooldownTimer <= 0 && leftoverBuffs.scraps >= abilityConfig.cost;
+            const isSpeedActive = abilityState.activeTimer > 0;
+            
+            if (isSpeedActive) {
+                // Active speed boost - intense red/orange pulsing glow
+                const pulse = Math.sin(Date.now() * 0.015) * 0.3 + 0.7;
+                const gradient = ctx.createRadialGradient(turkey.x, turkey.y, 0, turkey.x, turkey.y, 80);
+                gradient.addColorStop(0, `rgba(255, 50, 50, ${0.6 * pulse})`);
+                gradient.addColorStop(0.4, `rgba(255, 100, 0, ${0.4 * pulse})`);
+                gradient.addColorStop(0.7, `rgba(255, 150, 0, ${0.2 * pulse})`);
+                gradient.addColorStop(1, 'rgba(255, 150, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(turkey.x, turkey.y, 80, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (isSpeedReady) {
+                // Ready to use - golden pulsing glow
+                const pulse = Math.sin(Date.now() * 0.006) * 0.4 + 0.6;
+                const gradient = ctx.createRadialGradient(turkey.x, turkey.y, 0, turkey.x, turkey.y, 60);
+                gradient.addColorStop(0, `rgba(255, 215, 0, ${0.5 * pulse})`);
+                gradient.addColorStop(0.5, `rgba(255, 180, 0, ${0.25 * pulse})`);
+                gradient.addColorStop(1, 'rgba(255, 165, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(turkey.x, turkey.y, 60, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
             ctx.translate(turkey.x, turkey.y);
             ctx.scale(turkey.direction, 1);
             
