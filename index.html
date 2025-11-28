@@ -1349,13 +1349,11 @@
         function spawnCornMazeLevel() {
             barriers = [];
             const margin = 60;
-            const gapWidth = 120;
+            const gapWidth = 220; // Much wider gaps for easier navigation
             const rowConfigs = [
-                { y: 140, gapCenter: BASE_WIDTH / 2 },
-                { y: 240, gapCenter: BASE_WIDTH / 2 - 140 },
-                { y: 340, gapCenter: BASE_WIDTH / 2 + 140 },
-                { y: 440, gapCenter: BASE_WIDTH / 2 - 80 },
-                { y: 540, gapCenter: BASE_WIDTH / 2 + 60 }
+                { y: 180, gapCenter: BASE_WIDTH / 2 },
+                { y: 340, gapCenter: BASE_WIDTH / 2 - 80 },
+                { y: 500, gapCenter: BASE_WIDTH / 2 + 80 }
             ];
 
             rowConfigs.forEach((row, index) => {
@@ -1365,7 +1363,7 @@
                         x: margin + leftWidth / 2,
                         y: row.y,
                         width: leftWidth,
-                        height: 26,
+                        height: 22,
                         type: 'cornWall',
                         solid: true,
                         waveOffset: index * 0.4
@@ -1378,7 +1376,7 @@
                         x: BASE_WIDTH - margin - rightWidth / 2,
                         y: row.y,
                         width: rightWidth,
-                        height: 26,
+                        height: 22,
                         type: 'cornWall',
                         solid: true,
                         waveOffset: index * 0.5 + 0.3
@@ -1386,30 +1384,7 @@
                 }
             });
 
-            const verticalColumns = [
-                { x: margin + 30, top: 200, height: 360 },
-                { x: BASE_WIDTH - margin - 30, top: 220, height: 340 },
-                { x: BASE_WIDTH / 2 - 120, top: 180, height: 420 },
-                { x: BASE_WIDTH / 2 + 120, top: 260, height: 360 }
-            ];
-
-            verticalColumns.forEach((col, index) => {
-                barriers.push({
-                    x: col.x,
-                    y: col.top + col.height / 2,
-                    width: 28,
-                    height: col.height,
-                    type: 'cornWall',
-                    solid: true,
-                    waveOffset: index * 0.7
-                });
-            });
-
-            // add a couple of diagonal blockers to keep the player weaving
-            barriers.push(
-                { x: BASE_WIDTH / 2 - 170, y: 300, width: 90, height: 26, type: 'cornWall', solid: true, waveOffset: 2.3 },
-                { x: BASE_WIDTH / 2 + 170, y: 420, width: 90, height: 26, type: 'cornWall', solid: true, waveOffset: 2.6 }
-            );
+            // Removed vertical columns and diagonal blockers for easier maze
         }
 
         function initParadeFloatBuilder() {
@@ -2462,7 +2437,7 @@
         }
         function levelUp() {
             currentLevel++;
-            turkey.evolution++;
+            // Turkey no longer grows - stays the same size every level
             
             if (currentLevel > MAX_LEVEL) {
                 gameState = 'win';
