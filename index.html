@@ -184,6 +184,19 @@
             margin-bottom: 30px;
         }
 
+        .version-badge {
+            font-size: 14px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--cream);
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 4px 14px;
+            border-radius: 999px;
+            margin-bottom: 22px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
         .instructions {
             color: var(--cream);
             font-size: 18px;
@@ -302,6 +315,11 @@
             .subtitle {
                 font-size: 18px;
                 margin-bottom: 15px;
+            }
+
+            .version-badge {
+                font-size: 12px;
+                margin-bottom: 16px;
             }
 
             .instructions {
@@ -449,6 +467,7 @@
             <div class="turkey-emoji">🦃</div>
             <h1>Turkey Evolution</h1>
             <p class="subtitle">A Thanksgiving Adventure</p>
+            <div class="version-badge" id="versionBadge" aria-live="polite"></div>
             <div class="instructions">
                 Congrats, you're the entree that escaped the fridge and discovered cardio.<br><br>
                 🍗 Hoover apples, roast hunters with sarcasm, and get too swole for their oven.<br><br>
@@ -503,6 +522,29 @@
         const bossInstructionsEl = document.getElementById('bossInstructions');
         const scoreIconEl = document.getElementById('scoreIcon');
         const levelCountdownEl = document.getElementById('levelCountdown');
+        const versionBadgeEl = document.getElementById('versionBadge');
+
+        const VERSION = Object.freeze({
+            major: 1,
+            minor: 0,
+            patch: 0,
+            codename: 'Harvest Escape',
+            toString() {
+                return `${this.major}.${this.minor}.${this.patch}`;
+            }
+        });
+
+        function formatVersionLabel() {
+            const base = `v${VERSION.toString()}`;
+            return VERSION.codename ? `${base} · ${VERSION.codename}` : base;
+        }
+
+        if (versionBadgeEl) {
+            versionBadgeEl.textContent = formatVersionLabel();
+            versionBadgeEl.setAttribute('aria-label', `Game version ${VERSION.toString()}`);
+        }
+
+        window.TURKEY_EVOLUTION_VERSION = VERSION;
 
         // Base canvas dimensions (used for game logic)
         const BASE_WIDTH = 600;
