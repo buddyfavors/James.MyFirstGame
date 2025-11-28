@@ -1190,6 +1190,12 @@
             } else if (currentLevel === LEVEL_IDS.PARADE) {
                 spawnParadeWorkshop();
                 initParadeFloatBuilder();
+            } else if (currentLevel === LEVEL_IDS.BARN_ESCAPE) {
+                spawnBarriersForLevel(LEVEL_IDS.BARN_ESCAPE);
+            } else if (currentLevel === LEVEL_IDS.WOOD_ESCAPE) {
+                spawnBarriersForLevel(LEVEL_IDS.WOOD_ESCAPE);
+            } else if (currentLevel === LEVEL_IDS.SPACE_ESCAPE) {
+                spawnBarriersForLevel(LEVEL_IDS.SPACE_ESCAPE);
             }
 
             updateUI();
@@ -1236,13 +1242,68 @@
             return { minX, maxX, minY, maxY };
         }
 
+        // Calculate obstacle density in a given direction from a point
+        function countObstaclesInDirection(fromX, fromY, direction, checkRadius = 150) {
+            let count = 0;
+            const dirVectors = {
+                left: { x: -1, y: 0 },
+                right: { x: 1, y: 0 },
+                up: { x: 0, y: -1 },
+                down: { x: 0, y: 1 }
+            };
+            const vec = dirVectors[direction];
+            if (!vec) return 0;
+            
+            barriers.forEach(barrier => {
+                const dx = barrier.x - fromX;
+                const dy = barrier.y - fromY;
+                const dist = Math.hypot(dx, dy);
+                
+                // Check if barrier is in the direction we're looking
+                if (dist < checkRadius && dist > 10) {
+                    const dotProduct = (dx * vec.x + dy * vec.y) / dist;
+                    // Count if the barrier is mostly in this direction (dot product > 0.3)
+                    if (dotProduct > 0.3) {
+                        count += 1 / (dist / 50 + 0.5); // Closer obstacles count more
+                    }
+                }
+            });
+            return count;
+        }
+        
+        // Find the direction with fewest obstacles
+        function findLeastObstructedDirection(fromX, fromY) {
+            const directions = [
+                { axis: 'x', dir: 1, name: 'right' },
+                { axis: 'x', dir: -1, name: 'left' },
+                { axis: 'y', dir: 1, name: 'down' },
+                { axis: 'y', dir: -1, name: 'up' }
+            ];
+            
+            let bestDir = directions[0];
+            let lowestCount = Infinity;
+            
+            directions.forEach(d => {
+                const count = countObstaclesInDirection(fromX, fromY, d.name);
+                if (count < lowestCount) {
+                    lowestCount = count;
+                    bestDir = d;
+                }
+            });
+            
+            return bestDir;
+        }
+        
         function beginHunterReload() {
             if (!hunter) return;
             hunter.isReloading = true;
             hunter.reloadTimer = 0;
             hunter.patrolBounds = getHunterPatrolBounds();
-            hunter.wanderAxis = Math.random() > 0.5 ? 'x' : 'y';
-            hunter.patrolDirection = Math.random() > 0.5 ? 1 : -1;
+            
+            // Find direction with least obstacles
+            const bestDir = findLeastObstructedDirection(hunter.x, hunter.y);
+            hunter.wanderAxis = bestDir.axis;
+            hunter.patrolDirection = bestDir.dir;
         }
 
         function updateHunterPatrol() {
@@ -1253,14 +1314,20 @@
             if (axis === 'x') {
                 hunter.x += speed * hunter.patrolDirection;
                 if (hunter.x < bounds.minX || hunter.x > bounds.maxX) {
-                    hunter.patrolDirection *= -1;
+                    // When hitting bounds, find a new direction with fewer obstacles
                     hunter.x = Math.max(bounds.minX, Math.min(bounds.maxX, hunter.x));
+                    const bestDir = findLeastObstructedDirection(hunter.x, hunter.y);
+                    hunter.wanderAxis = bestDir.axis;
+                    hunter.patrolDirection = bestDir.dir;
                 }
             } else {
                 hunter.y += speed * hunter.patrolDirection;
                 if (hunter.y < bounds.minY || hunter.y > bounds.maxY) {
-                    hunter.patrolDirection *= -1;
+                    // When hitting bounds, find a new direction with fewer obstacles
                     hunter.y = Math.max(bounds.minY, Math.min(bounds.maxY, hunter.y));
+                    const bestDir = findLeastObstructedDirection(hunter.x, hunter.y);
+                    hunter.wanderAxis = bestDir.axis;
+                    hunter.patrolDirection = bestDir.dir;
                 }
             }
         }
@@ -1300,19 +1367,22 @@
 
             } else if (level === LEVEL_IDS.STEALTH_BOMBER) {
                 const coverBandTop = BASE_HEIGHT - BOMBER_GROUND_BAND_HEIGHT + 20;
-                const hayRowY = coverBandTop + 30;
+                // Raise barriers above turkey head height (turkey is ~50px tall)
+                // Place barriers 70px above the ground band for clearance above turkey
+                const elevationOffset = 70;
+                const hayRowY = coverBandTop - elevationOffset;
                 const hayColumns = [0.18, 0.38, 0.58, 0.78];
                 hayColumns.forEach((ratio, index) => {
                     barriers.push({
                         x: BASE_WIDTH * ratio,
-                        y: hayRowY + (index % 2) * 25,
+                        y: hayRowY + (index % 2) * 15,
                         width: 70,
                         height: 45,
                         type: 'haybale'
                     });
                 });
 
-                const rockRowY = coverBandTop + 80;
+                const rockRowY = coverBandTop - elevationOffset + 50;
                 const rockColumns = [0.3, 0.5, 0.7];
                 rockColumns.forEach(ratio => {
                     barriers.push({
@@ -1343,48 +1413,190 @@
                         type: pos.type
                     });
                 });
+            } else if (level === LEVEL_IDS.BARN_ESCAPE) {
+                // Barn escape maze with haybale walls and random door openings
+                generateEscapeMaze('haybale', 0.3);
+            } else if (level === LEVEL_IDS.WOOD_ESCAPE) {
+                // Wood escape maze with tree-like walls and random door openings
+                generateEscapeMaze('rock', 0.35);
+            } else if (level === LEVEL_IDS.SPACE_ESCAPE) {
+                // Space escape maze with satellite/debris walls and random door openings
+                generateEscapeMaze('haybale', 0.4);
             }
         }
 
         function spawnCornMazeLevel() {
             barriers = [];
-            const margin = 60;
-            const gapWidth = 220; // Much wider gaps for easier navigation
-            const rowConfigs = [
-                { y: 180, gapCenter: BASE_WIDTH / 2 },
-                { y: 340, gapCenter: BASE_WIDTH / 2 - 80 },
-                { y: 500, gapCenter: BASE_WIDTH / 2 + 80 }
+            // Pac-Man style maze layout
+            const cellSize = 60;
+            const cols = Math.floor(BASE_WIDTH / cellSize);
+            const rows = Math.floor(BASE_HEIGHT / cellSize);
+            const wallThickness = 20;
+            
+            // Define Pac-Man style maze grid (1 = wall, 0 = path)
+            // Classic Pac-Man inspired layout with corridors
+            const mazePattern = [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,0,0,0,0,0,0,0,0,1],
+                [1,0,1,1,0,1,1,1,0,1],
+                [1,0,1,0,0,0,0,1,0,1],
+                [1,0,0,0,1,1,0,0,0,1],
+                [1,0,1,0,0,0,0,1,0,1],
+                [1,0,1,1,0,1,1,1,0,1],
+                [1,0,0,0,0,0,0,0,0,1],
+                [1,1,1,0,1,1,0,1,1,1],
+                [1,0,0,0,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1,1,1]
             ];
-
-            rowConfigs.forEach((row, index) => {
-                const leftWidth = row.gapCenter - gapWidth / 2 - margin;
-                if (leftWidth > 0) {
+            
+            const patternRows = mazePattern.length;
+            const patternCols = mazePattern[0].length;
+            const scaleX = BASE_WIDTH / patternCols;
+            const scaleY = (BASE_HEIGHT - 100) / patternRows; // Leave space at bottom for start
+            
+            for (let row = 0; row < patternRows; row++) {
+                for (let col = 0; col < patternCols; col++) {
+                    if (mazePattern[row][col] === 1) {
+                        // Check for horizontal wall segments
+                        let hLength = 1;
+                        while (col + hLength < patternCols && mazePattern[row][col + hLength] === 1) {
+                            hLength++;
+                        }
+                        
+                        // Check for vertical wall segments
+                        let vLength = 1;
+                        while (row + vLength < patternRows && mazePattern[row + vLength][col] === 1) {
+                            vLength++;
+                        }
+                        
+                        // Create wall segment
+                        if (hLength >= vLength && hLength > 1) {
+                            barriers.push({
+                                x: col * scaleX + (hLength * scaleX) / 2,
+                                y: row * scaleY + scaleY / 2 + 30,
+                                width: hLength * scaleX - 10,
+                                height: wallThickness,
+                                type: 'cornWall',
+                                solid: true,
+                                waveOffset: (row + col) * 0.2
+                            });
+                            // Mark these cells as processed
+                            for (let i = 0; i < hLength; i++) {
+                                mazePattern[row][col + i] = 2;
+                            }
+                        } else if (mazePattern[row][col] === 1) {
+                            barriers.push({
+                                x: col * scaleX + scaleX / 2,
+                                y: row * scaleY + (vLength * scaleY) / 2 + 30,
+                                width: wallThickness,
+                                height: vLength * scaleY - 10,
+                                type: 'cornWall',
+                                solid: true,
+                                waveOffset: (row + col) * 0.3
+                            });
+                            // Mark these cells as processed
+                            for (let i = 0; i < vLength; i++) {
+                                mazePattern[row + i][col] = 2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Generate random maze pattern for escape levels with door openings
+        function generateEscapeMaze(wallType, doorChance = 0.35) {
+            barriers = [];
+            const cellSize = 80;
+            const cols = Math.floor(BASE_WIDTH / cellSize);
+            const rows = Math.floor(BASE_HEIGHT / cellSize);
+            const wallThickness = 22;
+            
+            // Create outer walls with random door openings
+            // Top wall
+            let x = 0;
+            while (x < BASE_WIDTH) {
+                const segmentWidth = cellSize + Math.random() * cellSize;
+                if (Math.random() > doorChance || x === 0) {
                     barriers.push({
-                        x: margin + leftWidth / 2,
-                        y: row.y,
-                        width: leftWidth,
-                        height: 22,
-                        type: 'cornWall',
+                        x: x + segmentWidth / 2,
+                        y: 40,
+                        width: Math.min(segmentWidth, BASE_WIDTH - x),
+                        height: wallThickness,
+                        type: wallType,
                         solid: true,
-                        waveOffset: index * 0.4
+                        waveOffset: x * 0.01
                     });
                 }
-
-                const rightWidth = BASE_WIDTH - margin - (row.gapCenter + gapWidth / 2);
-                if (rightWidth > 0) {
+                x += segmentWidth + 60;
+            }
+            
+            // Bottom wall
+            x = 0;
+            while (x < BASE_WIDTH) {
+                const segmentWidth = cellSize + Math.random() * cellSize;
+                if (Math.random() > doorChance) {
                     barriers.push({
-                        x: BASE_WIDTH - margin - rightWidth / 2,
-                        y: row.y,
-                        width: rightWidth,
-                        height: 22,
-                        type: 'cornWall',
+                        x: x + segmentWidth / 2,
+                        y: BASE_HEIGHT - 50,
+                        width: Math.min(segmentWidth, BASE_WIDTH - x),
+                        height: wallThickness,
+                        type: wallType,
                         solid: true,
-                        waveOffset: index * 0.5 + 0.3
+                        waveOffset: x * 0.01
                     });
+                }
+                x += segmentWidth + 60;
+            }
+            
+            // Interior maze walls - horizontal rows with random gaps
+            const rowYPositions = [
+                BASE_HEIGHT * 0.25,
+                BASE_HEIGHT * 0.45,
+                BASE_HEIGHT * 0.65,
+                BASE_HEIGHT * 0.85
+            ];
+            
+            rowYPositions.forEach((rowY, rowIndex) => {
+                // Create segments with random gaps (doors)
+                const numSegments = 3 + Math.floor(Math.random() * 2);
+                const gapWidth = 70 + Math.random() * 40;
+                const totalGaps = numSegments - 1;
+                const totalGapWidth = gapWidth * totalGaps;
+                const segmentWidth = (BASE_WIDTH - totalGapWidth - 80) / numSegments;
+                
+                let currentX = 40;
+                for (let i = 0; i < numSegments; i++) {
+                    barriers.push({
+                        x: currentX + segmentWidth / 2,
+                        y: rowY,
+                        width: segmentWidth,
+                        height: wallThickness,
+                        type: wallType,
+                        solid: true,
+                        waveOffset: rowIndex * 0.3 + i * 0.1
+                    });
+                    currentX += segmentWidth + gapWidth;
                 }
             });
-
-            // Removed vertical columns and diagonal blockers for easier maze
+            
+            // Add some vertical wall segments with random placement
+            const numVerticals = 2 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < numVerticals; i++) {
+                const vX = 100 + Math.random() * (BASE_WIDTH - 200);
+                const vY = 120 + Math.random() * (BASE_HEIGHT - 300);
+                const vHeight = 80 + Math.random() * 100;
+                
+                barriers.push({
+                    x: vX,
+                    y: vY + vHeight / 2,
+                    width: wallThickness,
+                    height: vHeight,
+                    type: wallType,
+                    solid: true,
+                    waveOffset: i * 0.4
+                });
+            }
         }
 
         function initParadeFloatBuilder() {
@@ -2022,7 +2234,8 @@
                 if (distToTarget > 6) {
                     moveDx = toTargetX / distToTarget;
                     moveDy = toTargetY / distToTarget;
-                    speedMultiplier = Math.min(1 + distToTarget / 200, 2);
+                    // Use same speed as keyboard for consistent movement
+                    speedMultiplier = 1;
                 } else if (!keyboardDx && !keyboardDy) {
                     moveDx = 0;
                     moveDy = 0;
