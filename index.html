@@ -480,6 +480,7 @@
             <h1>Level Up!</h1>
             <p class="level-name" id="newLevelName">Turkey Run</p>
             <p class="instructions" id="levelDescription">You've escaped the barn! Now run through the fields!</p>
+            <p class="instructions" id="levelCountdown" aria-live="polite" style="display: none;">Press SPACE or wait 10s for the next level.</p>
             <button class="btn" onclick="continueGame()">Continue</button>
         </div>
 
@@ -517,6 +518,7 @@
         const bossNameEl = document.getElementById('bossName');
         const bossInstructionsEl = document.getElementById('bossInstructions');
         const scoreIconEl = document.getElementById('scoreIcon');
+        const levelCountdownEl = document.getElementById('levelCountdown');
 
         // Base canvas dimensions (used for game logic)
         const BASE_WIDTH = 600;
@@ -534,6 +536,8 @@
         let xp = 0;
         let xpNeeded = 10;
         let nextBossType = null;
+        let levelCountdownInterval = null;
+        let levelCountdownRemaining = 0;
 
         // Touch state
         let touchActive = false;
@@ -604,10 +608,18 @@
             keys[e.key.toLowerCase()] = true;
             keys[e.code] = true;
             
-            // Peck attack on space bar
-            if (e.code === 'Space' && (gameState === 'boss' || gameState === 'playing')) {
-                e.preventDefault();
-                tryPeckAttack();
+            if (e.code === 'Space') {
+                if (gameState === 'levelup') {
+                    e.preventDefault();
+                    continueGame();
+                    return;
+                }
+                
+                // Peck attack on space bar
+                if (gameState === 'boss' || gameState === 'playing') {
+                    e.preventDefault();
+                    tryPeckAttack();
+                }
             }
         });
 
@@ -773,6 +785,42 @@
             gameState = 'boss'; // boss intro state
         }
 
+        function clearLevelCountdown() {
+            if (levelCountdownInterval !== null) {
+                clearInterval(levelCountdownInterval);
+                levelCountdownInterval = null;
+            }
+            levelCountdownRemaining = 0;
+            if (levelCountdownEl) {
+                levelCountdownEl.style.display = 'none';
+            }
+        }
+
+        function startLevelCountdown() {
+            if (!levelCountdownEl) return;
+            clearLevelCountdown();
+            levelCountdownRemaining = 10;
+            levelCountdownEl.style.display = 'block';
+            levelCountdownEl.textContent = `Press SPACE or wait ${levelCountdownRemaining}s for the next level.`;
+            levelCountdownInterval = setInterval(() => {
+                if (gameState !== 'levelup') {
+                    clearLevelCountdown();
+                    return;
+                }
+                levelCountdownRemaining--;
+                if (levelCountdownRemaining <= 0) {
+                    clearInterval(levelCountdownInterval);
+                    levelCountdownInterval = null;
+                    levelCountdownEl.textContent = 'Starting next level...';
+                    if (gameState === 'levelup') {
+                        continueGame();
+                    }
+                } else {
+                    levelCountdownEl.textContent = `Press SPACE or wait ${levelCountdownRemaining}s for the next level.`;
+                }
+            }, 1000);
+        }
+
         function startGame() {
             document.getElementById('startScreen').classList.add('hidden');
             gameState = 'playing';
@@ -781,6 +829,8 @@
         }
 
         function continueGame() {
+            if (gameState !== 'levelup') return;
+            clearLevelCountdown();
             document.getElementById('levelUpScreen').classList.add('hidden');
             gameState = 'playing';
             resetLevel();
@@ -796,6 +846,7 @@
         function restartGame() {
             document.getElementById('gameOverScreen').classList.add('hidden');
             document.getElementById('winScreen').classList.add('hidden');
+            clearLevelCountdown();
             currentLevel = 1;
             score = 0;
             xp = 0;
@@ -1507,6 +1558,7 @@
             document.getElementById('newLevelName').textContent = levels[currentLevel].name;
             document.getElementById('levelDescription').textContent = levels[currentLevel].description;
             document.getElementById('levelUpScreen').classList.remove('hidden');
+            startLevelCountdown();
         }
 
         function gameOver(message) {
