@@ -641,6 +641,9 @@
         let BASE_HEIGHT = window.innerHeight || 800;
         const FLOOR_PADDING = 30;
         const BOMBER_GROUND_BAND_HEIGHT = 140;
+        const TEN_SECOND_FRAMES = 10 * 60;
+        const HUNTER_RELOAD_FRAMES = TEN_SECOND_FRAMES;
+        const BOMBER_RELOAD_FRAMES = TEN_SECOND_FRAMES;
 
         const BOSS_TYPES = {
             PUMPKIN: 'pumpkinPie',
@@ -707,7 +710,9 @@
             speed: 5,
             mouthOpen: 0,
             direction: 1,
-            evolution: 1
+            evolution: 1,
+            legPhase: 0,
+            legSwingAmount: 0
         };
 
         function getTurkeyVerticalBounds() {
@@ -989,6 +994,9 @@
 
             // Ensure turkey stays in bounds after resize
             clampTurkeyToBounds();
+            if (hunter) {
+                hunter.patrolBounds = getHunterPatrolBounds();
+            }
 
             if (currentLevel === 5 || (boss && boss.type === BOSS_TYPES.AURORA) || nextBossType === BOSS_TYPES.AURORA) {
                 ensureAuroraAmbience(true);
@@ -1161,7 +1169,11 @@
                 graceTimer: 180,
                 shotsFired: 0,
                 reloadTimer: 0,
-                isReloading: false
+                isReloading: false,
+                walkSpeed: 0.8,
+                patrolDirection: 1,
+                wanderAxis: 'x',
+                patrolBounds: getHunterPatrolBounds()
             };
             
             spawnBarriersForLevel(3);
@@ -1177,29 +1189,91 @@
             turkey.y = randomCorner.y;
         }
 
+        function getHunterPatrolBounds() {
+            const marginX = Math.max(80, BASE_WIDTH * 0.15);
+            const minX = marginX;
+            const maxX = Math.max(minX + 40, BASE_WIDTH - marginX);
+            const bandY = Math.max(100, BASE_HEIGHT * 0.15);
+            const minY = Math.max(120, BASE_HEIGHT / 2 - bandY);
+            const maxY = Math.max(minY + 40, Math.min(BASE_HEIGHT - 160, BASE_HEIGHT / 2 + bandY));
+            return { minX, maxX, minY, maxY };
+        }
+
+        function beginHunterReload() {
+            if (!hunter) return;
+            hunter.isReloading = true;
+            hunter.reloadTimer = 0;
+            hunter.patrolBounds = getHunterPatrolBounds();
+            hunter.wanderAxis = Math.random() > 0.5 ? 'x' : 'y';
+            hunter.patrolDirection = Math.random() > 0.5 ? 1 : -1;
+        }
+
+        function updateHunterPatrol() {
+            if (!hunter || !hunter.isReloading) return;
+            const bounds = hunter.patrolBounds || getHunterPatrolBounds();
+            const axis = hunter.wanderAxis || 'x';
+            const speed = hunter.walkSpeed || 0.8;
+            if (axis === 'x') {
+                hunter.x += speed * hunter.patrolDirection;
+                if (hunter.x < bounds.minX || hunter.x > bounds.maxX) {
+                    hunter.patrolDirection *= -1;
+                    hunter.x = Math.max(bounds.minX, Math.min(bounds.maxX, hunter.x));
+                }
+            } else {
+                hunter.y += speed * hunter.patrolDirection;
+                if (hunter.y < bounds.minY || hunter.y > bounds.maxY) {
+                    hunter.patrolDirection *= -1;
+                    hunter.y = Math.max(bounds.minY, Math.min(bounds.maxY, hunter.y));
+                }
+            }
+        }
+
         function spawnBarriersForLevel(level) {
             barriers = [];
             if (level === 3) {
-                const barrierPositions = [
-                    { x: 120, y: 150, type: 'haybale' },
-                    { x: BASE_WIDTH - 120, y: 150, type: 'haybale' },
-                    { x: 120, y: BASE_HEIGHT - 200, type: 'haybale' },
-                    { x: BASE_WIDTH - 120, y: BASE_HEIGHT - 200, type: 'haybale' },
-                    { x: BASE_WIDTH / 2 - 150, y: BASE_HEIGHT / 2 - 100, type: 'rock' },
-                    { x: BASE_WIDTH / 2 + 150, y: BASE_HEIGHT / 2 - 100, type: 'rock' },
-                    { x: BASE_WIDTH / 2 - 150, y: BASE_HEIGHT / 2 + 150, type: 'rock' },
-                    { x: BASE_WIDTH / 2 + 150, y: BASE_HEIGHT / 2 + 150, type: 'rock' },
-                    { x: BASE_WIDTH / 2, y: BASE_HEIGHT / 2 - 180, type: 'tree' },
-                    { x: BASE_WIDTH / 2, y: BASE_HEIGHT / 2 + 200, type: 'tree' }
+                const hayColumns = [0.18, 0.5, 0.82];
+                const hayRows = [0.32, 0.68];
+                hayRows.forEach(rowRatio => {
+                    hayColumns.forEach(colRatio => {
+                        barriers.push({
+                            x: BASE_WIDTH * colRatio,
+                            y: BASE_HEIGHT * rowRatio,
+                            width: 70,
+                            height: 45,
+                            type: 'haybale'
+                        });
+                    });
+                });
+
+                const rockPositions = [
+                    { x: BASE_WIDTH * 0.25, y: BASE_HEIGHT * 0.48 },
+                    { x: BASE_WIDTH * 0.75, y: BASE_HEIGHT * 0.48 },
+                    { x: BASE_WIDTH * 0.22, y: BASE_HEIGHT * 0.82 },
+                    { x: BASE_WIDTH * 0.78, y: BASE_HEIGHT * 0.82 }
                 ];
-                
-                barrierPositions.forEach(pos => {
+                rockPositions.forEach(pos => {
                     barriers.push({
                         x: pos.x,
                         y: pos.y,
-                        width: pos.type === 'tree' ? 40 : 60,
-                        height: pos.type === 'tree' ? 80 : 45,
-                        type: pos.type
+                        width: 70,
+                        height: 50,
+                        type: 'rock'
+                    });
+                });
+
+                const treePositions = [
+                    { x: BASE_WIDTH * 0.35, y: BASE_HEIGHT * 0.2 },
+                    { x: BASE_WIDTH * 0.65, y: BASE_HEIGHT * 0.2 },
+                    { x: BASE_WIDTH * 0.2, y: BASE_HEIGHT * 0.86 },
+                    { x: BASE_WIDTH * 0.8, y: BASE_HEIGHT * 0.86 }
+                ];
+                treePositions.forEach(pos => {
+                    barriers.push({
+                        x: pos.x,
+                        y: pos.y,
+                        width: 40,
+                        height: 80,
+                        type: 'tree'
                     });
                 });
             } else if (level === 4) {
@@ -1421,7 +1495,7 @@
                 graceTimer: 180,
                 isReloading: false,
                 reloadTimer: 0,
-                reloadFrames: 360, // 6 seconds at ~60fps for faster reloads
+                reloadFrames: BOMBER_RELOAD_FRAMES, // 10 seconds at ~60fps
                 activeBomb: null,
                 roundsToSurvive: 3
             };
@@ -1581,14 +1655,27 @@
             }
         }
 
+        function getAppleSpawnRange() {
+            if (currentLevel === 4) {
+                const { minY, maxY } = getTurkeyVerticalBounds();
+                const padding = 20;
+                const groundMin = Math.max(minY + padding, BASE_HEIGHT - BOMBER_GROUND_BAND_HEIGHT + 10);
+                const groundMax = Math.max(groundMin + 1, maxY - 5);
+                return { minY: groundMin, maxY: groundMax };
+            }
+            return { minY: 50, maxY: BASE_HEIGHT - 150 };
+        }
+
         function spawnApple() {
             let attempts = 0;
             const maxAttempts = 25;
             while (attempts < maxAttempts) {
                 const size = currentLevel === 7 ? 32 : 25;
+                const { minY: appleMinY, maxY: appleMaxY } = getAppleSpawnRange();
+                const yRange = Math.max(1, appleMaxY - appleMinY);
                 const candidate = {
                     x: Math.random() * (BASE_WIDTH - 100) + 50,
-                    y: Math.random() * (BASE_HEIGHT - 150) + 50,
+                    y: appleMinY + Math.random() * yRange,
                     size,
                     rotation: Math.random() * Math.PI * 2,
                     bobOffset: Math.random() * Math.PI * 2
@@ -1888,17 +1975,28 @@
                 }
             }
 
-            if (moveDx !== 0 || moveDy !== 0) {
+            const strideSpeed = turkey.speed * speedMultiplier * cranberryBoost;
+            const isMoving = moveDx !== 0 || moveDy !== 0;
+            if (isMoving) {
                 const len = Math.hypot(moveDx, moveDy);
                 moveDx /= len;
                 moveDy /= len;
-                turkey.x += moveDx * turkey.speed * speedMultiplier * cranberryBoost;
-                turkey.y += moveDy * turkey.speed * speedMultiplier * cranberryBoost;
+                turkey.x += moveDx * strideSpeed;
+                turkey.y += moveDy * strideSpeed;
                 turkey.direction = moveDx >= 0 ? 1 : -1;
                 
                 if (leftoverBuffs.cranberry.activeTimer > 0 && leftoverBuffs.cranberry.activeTimer % 5 === 0) {
                     spawnParticles(turkey.x - moveDx * 20, turkey.y - moveDy * 20, '#b11226', 2);
                 }
+            }
+
+            if (isMoving) {
+                const phaseStep = Math.min(0.4, Math.max(0.08, strideSpeed * 0.04));
+                turkey.legPhase = (turkey.legPhase + phaseStep) % (Math.PI * 2);
+                turkey.legSwingAmount = Math.min(1, turkey.legSwingAmount + 0.08);
+            } else {
+                turkey.legPhase = (turkey.legPhase + 0.01) % (Math.PI * 2);
+                turkey.legSwingAmount = Math.max(0, turkey.legSwingAmount - 0.05);
             }
 
             if (currentLevel === 5 || (boss && boss.type === BOSS_TYPES.AURORA) || nextBossType === BOSS_TYPES.AURORA) {
@@ -1983,9 +2081,10 @@
                 if (hunter.graceTimer > 0) {
                     hunter.graceTimer--;
                 } else if (hunter.isReloading) {
-                    // Hunter is reloading - 10 seconds (600 frames at 60fps)
+                    // Hunter is reloading - 10 seconds worth of frames
                     hunter.reloadTimer++;
-                    if (hunter.reloadTimer >= 600) {
+                    updateHunterPatrol();
+                    if (hunter.reloadTimer >= HUNTER_RELOAD_FRAMES) {
                         hunter.isReloading = false;
                         hunter.reloadTimer = 0;
                         hunter.shotsFired = 0;
@@ -2010,7 +2109,7 @@
                         hunter.shotsFired++;
                         if (hunter.shotsFired >= 3) {
                             // Start reloading after 3 shots
-                            hunter.isReloading = true;
+                            beginHunterReload();
                         }
                     }
                 }
@@ -2580,30 +2679,36 @@
                 ctx.stroke();
             }
             
-            // Legs
+            // Legs with simple stride animation
             ctx.strokeStyle = '#FFA500';
             ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(-5, 20);
-            ctx.lineTo(-8, 35);
-            ctx.moveTo(-8, 35);
-            ctx.lineTo(-15, 40);
-            ctx.moveTo(-8, 35);
-            ctx.lineTo(-5, 42);
-            ctx.moveTo(-8, 35);
-            ctx.lineTo(-2, 40);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.moveTo(5, 20);
-            ctx.lineTo(8, 35);
-            ctx.moveTo(8, 35);
-            ctx.lineTo(2, 40);
-            ctx.moveTo(8, 35);
-            ctx.lineTo(8, 42);
-            ctx.moveTo(8, 35);
-            ctx.lineTo(15, 40);
-            ctx.stroke();
+            const legBaseY = 22;
+            const hipOffsets = [-6, 6];
+            const swingAmp = 8 * turkey.legSwingAmount;
+            const liftAmp = 6 * turkey.legSwingAmount;
+            const drawAnimatedLeg = (hipX, phaseOffset) => {
+                const phase = turkey.legPhase + phaseOffset;
+                const swing = Math.sin(phase) * swingAmp;
+                const lift = Math.max(0, Math.cos(phase)) * liftAmp;
+                const kneeX = hipX + swing * 0.4;
+                const kneeY = legBaseY + 8 - lift;
+                const footX = hipX + swing;
+                const footY = legBaseY + 20;
+                
+                ctx.beginPath();
+                ctx.moveTo(hipX, legBaseY - 2);
+                ctx.lineTo(kneeX, kneeY);
+                ctx.lineTo(footX, footY);
+                ctx.moveTo(footX, footY);
+                ctx.lineTo(footX - 6, footY + 5);
+                ctx.moveTo(footX, footY);
+                ctx.lineTo(footX + 4, footY + 6);
+                ctx.moveTo(footX, footY);
+                ctx.lineTo(footX + 8, footY + 2);
+                ctx.stroke();
+            };
+            drawAnimatedLeg(hipOffsets[0], 0);
+            drawAnimatedLeg(hipOffsets[1], Math.PI);
             
             ctx.restore();
         }
@@ -2986,14 +3091,14 @@
                 ctx.fillStyle = 'rgba(100, 200, 255, 0.9)';
                 ctx.font = 'bold 14px Fraunces';
                 ctx.textAlign = 'center';
-                const secondsLeft = Math.ceil((600 - hunter.reloadTimer) / 60);
+                const secondsLeft = Math.ceil((HUNTER_RELOAD_FRAMES - hunter.reloadTimer) / 60);
                 ctx.fillText('🔄 RELOADING ' + secondsLeft + 's', 0, -70);
                 
                 // Reload progress bar
                 ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
                 ctx.fillRect(-30, -60, 60, 8);
                 ctx.fillStyle = 'rgba(100, 200, 255, 0.9)';
-                ctx.fillRect(-30, -60, 60 * (hunter.reloadTimer / 600), 8);
+                ctx.fillRect(-30, -60, 60 * (hunter.reloadTimer / HUNTER_RELOAD_FRAMES), 8);
             } else {
                 // Show shots remaining
                 ctx.fillStyle = 'rgba(255, 100, 100, 0.9)';
