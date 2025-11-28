@@ -646,7 +646,6 @@
             NORTHERN_LIGHTS_BOSS: 9,
             PARADE: 10
         });
-        const CORN_MAZE_SPEED_MODIFIER = 0.65;
         const AURORA_ATTACK_WINDOW_FRAMES = 360;
         const AURORA_RECHARGE_FRAMES = 10 * 60;
 
@@ -700,8 +699,7 @@
         });
 
         const TURKEY_SIZE_PRESETS = Object.freeze({
-            default: { width: 60, height: 50 },
-            maze: { width: 48, height: 42 }
+            default: { width: 60, height: 50 }
         });
 
         // Turkey
@@ -719,7 +717,7 @@
         };
 
         function applyTurkeySizeForLevel(levelOverride = currentLevel) {
-            const preset = levelOverride === LEVEL_IDS.CORN_MAZE ? TURKEY_SIZE_PRESETS.maze : TURKEY_SIZE_PRESETS.default;
+            const preset = TURKEY_SIZE_PRESETS.default;
             turkey.width = preset.width;
             turkey.height = preset.height;
         }
@@ -1150,8 +1148,6 @@
             let initialCollectibles = 5;
             if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
                 initialCollectibles = 6;
-            } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
-                initialCollectibles = 8;
             } else if (currentLevel === LEVEL_IDS.PARADE) {
                 initialCollectibles = 4;
             }
@@ -1174,11 +1170,10 @@
                 queueBossFight(BOSS_TYPES.AURORA);
                 ensureAuroraAmbience(true);
             } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
-                spawnCornMazeLevel();
-                // Position turkey on a path - row 9 has tunnel exits, row 19 has paths
-                const cellHeight = BASE_HEIGHT / 21;
-                turkey.x = BASE_WIDTH / 2;
-                turkey.y = cellHeight * 19 + cellHeight / 2; // Row 19 is a path row
+                spawnBarriersForLevel(LEVEL_IDS.CORN_MAZE);
+                // Position turkey on a path cell (row 17 is a path row in escape maze)
+                const cellHeight = BASE_HEIGHT / 19;
+                turkey.y = cellHeight * 17 + cellHeight / 2;
             } else if (currentLevel === LEVEL_IDS.PARADE) {
                 spawnParadeWorkshop();
                 initParadeFloatBuilder();
@@ -1550,6 +1545,9 @@
                         type: pos.type
                     });
                 });
+            } else if (level === LEVEL_IDS.CORN_MAZE) {
+                // Corn maze with corn stalk walls
+                generateEscapeMaze('cornWall', 0.3);
             } else if (level === LEVEL_IDS.BARN_ESCAPE) {
                 // Barn escape maze with haybale walls and random door openings
                 generateEscapeMaze('haybale', 0.3);
@@ -1562,75 +1560,6 @@
             }
         }
 
-        function spawnCornMazeLevel() {
-            barriers = [];
-            // Full-screen Pac-Man style maze
-            const wallThickness = 18;
-            const edgeWall = 12; // Thin walls at edges
-            
-            // Pac-Man style maze pattern (1 = wall, 0 = path)
-            // This creates classic Pac-Man corridors filling the screen
-            const mazePattern = [
-                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-                [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
-                [1,0,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1],
-                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                [1,0,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,0,1],
-                [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
-                [1,1,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,1,1],
-                [1,1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1,1],
-                [1,1,1,1,1,0,1,0,1,1,0,1,1,0,1,0,1,1,1,1,1],
-                [0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0],
-                [1,1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1],
-                [1,1,1,1,1,0,1,0,0,0,0,0,0,0,1,0,1,1,1,1,1],
-                [1,1,1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1],
-                [1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1],
-                [1,0,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,0,1],
-                [1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1],
-                [1,1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1,1],
-                [1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
-                [1,0,1,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,0,1],
-                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-            ];
-            
-            const patternRows = mazePattern.length;
-            const patternCols = mazePattern[0].length;
-            
-            // Full screen scale
-            const cellWidth = BASE_WIDTH / patternCols;
-            const cellHeight = BASE_HEIGHT / patternRows;
-            
-            for (let row = 0; row < patternRows; row++) {
-                for (let col = 0; col < patternCols; col++) {
-                    if (mazePattern[row][col] === 1) {
-                        barriers.push({
-                            x: col * cellWidth + cellWidth / 2,
-                            y: row * cellHeight + cellHeight / 2,
-                            width: cellWidth + 2,
-                            height: cellHeight + 2,
-                            type: 'cornWall',
-                            solid: true,
-                            waveOffset: (row + col) * 0.15
-                        });
-                    }
-                }
-            }
-            
-            // Store maze paths for apple spawning
-            window.mazePaths = [];
-            for (let row = 0; row < patternRows; row++) {
-                for (let col = 0; col < patternCols; col++) {
-                    if (mazePattern[row][col] === 0) {
-                        window.mazePaths.push({
-                            x: col * cellWidth + cellWidth / 2,
-                            y: row * cellHeight + cellHeight / 2
-                        });
-                    }
-                }
-            }
-        }
-        
         // Generate Pac-Man style maze for escape levels - full screen
         function generateEscapeMaze(wallType, doorChance = 0.35) {
             barriers = [];
@@ -2352,8 +2281,6 @@
             let scoreIcon = '🍎';
             if (currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS) {
                 scoreIcon = '🍍';
-            } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
-                scoreIcon = '🌽';
             } else if (currentLevel === LEVEL_IDS.PARADE) {
                 scoreIcon = '🎪';
             }
@@ -2377,8 +2304,6 @@
                 filled = Math.max(0, boss.health);
                 needed = boss.maxHealth;
                 label = 'Boss HP';
-            } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
-                label = 'Maze XP';
             } else if (currentLevel === LEVEL_IDS.PARADE && paradeFloat) {
                 filled = paradeFloat.partsBuilt;
                 needed = paradeFloat.partsRequired;
@@ -2417,8 +2342,6 @@
             let moveDy = 0;
             let speedMultiplier = 1;
             const cranberryBoost = leftoverBuffs.cranberry.activeTimer > 0 ? LEFTOVER_CONFIG.cranberry.speedBoost : 1;
-            const isCornMazeLevel = currentLevel === LEVEL_IDS.CORN_MAZE;
-            const levelSpeedModifier = isCornMazeLevel ? CORN_MAZE_SPEED_MODIFIER : 1;
             
             const keyLeft = keys['arrowleft'] || keys['a'] || keys['ArrowLeft'];
             const keyRight = keys['arrowright'] || keys['d'] || keys['ArrowRight'];
@@ -2455,7 +2378,7 @@
                 }
             }
 
-            const strideSpeed = turkey.speed * speedMultiplier * cranberryBoost * levelSpeedModifier;
+            const strideSpeed = turkey.speed * speedMultiplier * cranberryBoost;
             const isMoving = moveDx !== 0 || moveDy !== 0;
             if (isMoving) {
                 const len = Math.hypot(moveDx, moveDy);
@@ -3528,28 +3451,6 @@
                     ctx.ellipse((i - 1.5) * 5, -apple.size / 1.4 - i * 2, 6, 16, (i - 1.5) * 0.2, 0, Math.PI * 2);
                     ctx.fill();
                 }
-                ctx.restore();
-                return;
-            } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
-                ctx.fillStyle = '#f2c94c';
-                ctx.beginPath();
-                ctx.ellipse(0, 0, apple.size / 2.4, apple.size / 1.2, 0.2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#d18e00';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(0, -apple.size / 2);
-                ctx.lineTo(0, apple.size / 2);
-                ctx.moveTo(-apple.size / 4, -apple.size / 2);
-                ctx.lineTo(-apple.size / 4, apple.size / 2);
-                ctx.moveTo(apple.size / 4, -apple.size / 2);
-                ctx.lineTo(apple.size / 4, apple.size / 2);
-                ctx.stroke();
-                ctx.fillStyle = '#2d6a4f';
-                ctx.beginPath();
-                ctx.ellipse(-apple.size / 3, -apple.size / 2, 8, 18, -0.5, 0, Math.PI * 2);
-                ctx.ellipse(apple.size / 3, -apple.size / 2, 8, 18, 0.5, 0, Math.PI * 2);
-                ctx.fill();
                 ctx.restore();
                 return;
             } else if (currentLevel === LEVEL_IDS.PARADE) {
