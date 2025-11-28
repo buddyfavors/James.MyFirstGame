@@ -543,10 +543,9 @@
             <h3>Leftovers Lab</h3>
             <div class="leftover-scraps"><span id="leftoverScraps">0</span> scraps</div>
             <div class="leftover-actions">
-                <button class="leftover-btn" id="craftGravyBtn">🛡️ Gravy Shield</button>
-                <button class="leftover-btn" id="craftCranberryBtn">⚡ Cranberry Dash</button>
+                <button class="leftover-btn" id="craftCranberryBtn">⚡ Speed Boost</button>
             </div>
-            <div class="leftover-status" id="leftoverStatus">Collect treats to cook buffs!</div>
+            <div class="leftover-status" id="leftoverStatus">Collect treats to charge your Speed Boost!</div>
         </section>
 
         <div class="start-screen" id="startScreen">
@@ -576,7 +575,7 @@
             <div style="font-size: 80px;" id="bossEmoji">🥧</div>
             <h1>Boss Fight!</h1>
             <p class="boss-name" id="bossName">Pumpkin Pie</p>
-            <p class="instructions" id="bossInstructions">The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck automatically when you get close enough<br>🛡️ Trigger your Gravy Shield with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>🦃 Or just <strong>EAT THE BOSS</strong> directly!</p>
+            <p class="instructions" id="bossInstructions">The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck automatically when you get close enough<br>⚡ Trigger your Speed Boost with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>🦃 Or just <strong>EAT THE BOSS</strong> directly!</p>
             <button class="btn" onclick="startBossFight()">Fight!</button>
         </div>
 
@@ -610,7 +609,6 @@
         const versionBadgeEl = document.getElementById('versionBadge');
         const leftoverScrapsEl = document.getElementById('leftoverScraps');
         const leftoverStatusEl = document.getElementById('leftoverStatus');
-        const craftGravyBtn = document.getElementById('craftGravyBtn');
         const craftCranberryBtn = document.getElementById('craftCranberryBtn');
 
         const VERSION = Object.freeze({
@@ -651,7 +649,7 @@
         };
         const CORN_MAZE_SPEED_MODIFIER = 0.65;
         const AURORA_ATTACK_WINDOW_FRAMES = 360;
-        const AURORA_RECHARGE_FRAMES = 180;
+        const AURORA_RECHARGE_FRAMES = 10 * 60;
 
         // Game State
         let gameState = 'start'; // start, playing, levelup, boss, gameover, win
@@ -691,11 +689,6 @@
 
         const LEFTOVER_CONFIG = Object.freeze({
             scrapsPerFruit: 1,
-            gravy: {
-                cost: 5,
-                duration: 8 * 60,
-                cooldown: 12 * 60
-            },
             cranberry: {
                 cost: 4,
                 duration: 6 * 60,
@@ -778,6 +771,7 @@
 
         // Northern lights effects
         let auroraWaves = [];
+        let auroraBlasts = [];
         let roamingAuroras = [];
 
         // Barriers for hiding
@@ -790,23 +784,13 @@
 
         const leftoverBuffs = {
             scraps: 0,
-            gravy: { activeTimer: 0, cooldownTimer: 0 },
             cranberry: { activeTimer: 0, cooldownTimer: 0 }
         };
         function isBossFightActive() {
             return gameState === 'boss';
         }
-        function getActiveAbilityKey() {
-            return isBossFightActive() ? 'gravy' : 'cranberry';
-        }
         function isAbilityEnabled(buffKey) {
-            if (buffKey === 'gravy') {
-                return isBossFightActive();
-            }
-            if (buffKey === 'cranberry') {
-                return !isBossFightActive();
-            }
-            return true;
+            return buffKey === 'cranberry';
         }
         let leftoverUIFrame = 0;
 
@@ -837,9 +821,6 @@
             keys[e.code] = false;
         });
         
-        if (craftGravyBtn) {
-            craftGravyBtn.addEventListener('click', () => craftGravyShield());
-        }
         if (craftCranberryBtn) {
             craftCranberryBtn.addEventListener('click', () => craftCranberryDash());
         }
@@ -1045,11 +1026,11 @@
             if (type === BOSS_TYPES.AURORA) {
                 bossEmojiEl.textContent = '🌌';
                 bossNameEl.textContent = 'Northern Light Monster';
-                bossInstructionsEl.innerHTML = 'The Aurora Beast awakens!<br>🌌 Dodge aurora volleys when it attacks<br>🌲 Hide behind the glowing trees<br>🍍 Pineapples fuel scraps but can\'t hurt it<br>🛡️ Trigger your Gravy Shield with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>👊 Peck it while it\'s recharging!';
+                bossInstructionsEl.innerHTML = 'The Aurora Beast awakens!<br>🌌 Dodge aurora volleys when it attacks<br>🌲 Hide behind the glowing trees<br>🍍 Pineapples fuel scraps but can\'t hurt it<br>⚡ Trigger your Speed Boost with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>💥 It unleashes a mega blast after recharging — stay mobile!';
             } else {
                 bossEmojiEl.textContent = '🥧';
                 bossNameEl.textContent = 'Pumpkin Pie';
-                bossInstructionsEl.innerHTML = 'The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck automatically when you get close enough<br>🛡️ Trigger your Gravy Shield with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>🦃 Or just <strong>EAT THE BOSS</strong> directly!';
+                bossInstructionsEl.innerHTML = 'The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck automatically when you get close enough<br>⚡ Trigger your Speed Boost with <span class="desktop-controls">SPACE or double-click</span><span class="mobile-controls">double-tap</span><br>🦃 Or just <strong>EAT THE BOSS</strong> directly!';
             }
         }
 
@@ -1144,6 +1125,7 @@
             bossProjectiles = [];
             bomberBombs = [];
             auroraWaves = [];
+            auroraBlasts = [];
             roamingAuroras = [];
             boss = null;
             hunter = null;
@@ -1297,46 +1279,6 @@
                     });
                 });
 
-                const treePositions = [
-                    { x: BASE_WIDTH * 0.35, y: BASE_HEIGHT * 0.2 },
-                    { x: BASE_WIDTH * 0.65, y: BASE_HEIGHT * 0.2 },
-                    { x: BASE_WIDTH * 0.2, y: BASE_HEIGHT * 0.86 },
-                    { x: BASE_WIDTH * 0.8, y: BASE_HEIGHT * 0.86 }
-                ];
-                treePositions.forEach(pos => {
-                    barriers.push({
-                        x: pos.x,
-                        y: pos.y,
-                        width: 40,
-                        height: 80,
-                        type: 'tree'
-                    });
-                });
-            } else if (level === 4) {
-                const bunkerRows = [
-                    { x: BASE_WIDTH / 2 - 200, y: BASE_HEIGHT - 220 },
-                    { x: BASE_WIDTH / 2, y: BASE_HEIGHT - 260 },
-                    { x: BASE_WIDTH / 2 + 200, y: BASE_HEIGHT - 220 }
-                ];
-                bunkerRows.forEach(pos => {
-                    barriers.push({
-                        x: pos.x,
-                        y: pos.y,
-                        width: 80,
-                        height: 40,
-                        type: 'bunker'
-                    });
-                });
-                // scatter trees for cover
-                for (let i = 0; i < 4; i++) {
-                    barriers.push({
-                        x: 80 + i * 120,
-                        y: 200 + (i % 2) * 150,
-                        width: 40,
-                        height: 90,
-                        type: 'tree'
-                    });
-                }
             } else if (level === 5) {
                 // glowing pine obstacles
                 const crystalRings = [
@@ -1776,6 +1718,63 @@
             }
         }
 
+        function triggerAuroraEnergyBlast() {
+            if (!boss) return;
+            const blastRadius = Math.max(BASE_WIDTH, BASE_HEIGHT) + 400;
+            auroraBlasts.push({
+                x: boss.x,
+                y: boss.y,
+                radius: boss.radius,
+                maxRadius: blastRadius,
+                alpha: 1,
+                speed: 9,
+                fade: 0.012
+            });
+
+            const unsafeRadius = boss.radius + 120;
+            const distanceToTurkey = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
+            if (distanceToTurkey <= unsafeRadius) {
+                handleTurkeyDamage('The aurora blast consumed you up close!');
+            }
+
+            const novaCount = 18;
+            for (let i = 0; i < novaCount; i++) {
+                const angle = (Math.PI * 2 * i) / novaCount;
+                bossProjectiles.push({
+                    x: boss.x,
+                    y: boss.y,
+                    vx: Math.cos(angle) * 5.5,
+                    vy: Math.sin(angle) * 5.5,
+                    size: 24,
+                    type: 'auroraNova',
+                    life: 150,
+                    onHitMessage: 'The aurora blast vaporized you!'
+                });
+            }
+
+            spawnParticles(boss.x, boss.y, '#d4fff9', 30);
+            spawnParticles(boss.x, boss.y, '#a855ff', 20);
+            auroraWaves.push({
+                x: boss.x,
+                y: boss.y,
+                radius: boss.radius,
+                maxRadius: boss.radius + 320,
+                alpha: 1
+            });
+        }
+
+        function updateAuroraBlasts() {
+            for (let i = auroraBlasts.length - 1; i >= 0; i--) {
+                const blast = auroraBlasts[i];
+                blast.radius += blast.speed;
+                blast.alpha = Math.max(0, blast.alpha - blast.fade);
+
+                if (blast.radius >= blast.maxRadius || blast.alpha <= 0.02) {
+                    auroraBlasts.splice(i, 1);
+                }
+            }
+        }
+
         function gainLeftoverScraps(amount = LEFTOVER_CONFIG.scrapsPerFruit) {
             leftoverBuffs.scraps += amount;
             updateLeftoverUI('Scraps collected!');
@@ -1791,18 +1790,6 @@
             return affordable && ready;
         }
 
-        function craftGravyShield() {
-            if (!canUseLeftover('gravy')) {
-                updateLeftoverUI('Need more scraps or cooldown!');
-                return;
-            }
-            leftoverBuffs.scraps -= LEFTOVER_CONFIG.gravy.cost;
-            leftoverBuffs.gravy.activeTimer = LEFTOVER_CONFIG.gravy.duration;
-            leftoverBuffs.gravy.cooldownTimer = LEFTOVER_CONFIG.gravy.duration + LEFTOVER_CONFIG.gravy.cooldown;
-            spawnParticles(turkey.x, turkey.y, '#d2b48c', 20);
-            updateLeftoverUI('Gravy shield simmering!');
-        }
-
         function craftCranberryDash() {
             if (!canUseLeftover('cranberry')) {
                 updateLeftoverUI('Need more scraps or cooldown!');
@@ -1816,37 +1803,24 @@
         }
 
         function activateContextAbility() {
-            const abilityKey = getActiveAbilityKey();
-            if (abilityKey === 'gravy') {
-                craftGravyShield();
-            } else {
-                craftCranberryDash();
-            }
+            craftCranberryDash();
         }
 
         function updateLeftoverUI(statusMessage = null) {
             if (!leftoverScrapsEl) return;
             leftoverScrapsEl.textContent = leftoverBuffs.scraps;
 
-            if (craftGravyBtn) {
-                const showGravy = isBossFightActive();
-                craftGravyBtn.style.display = showGravy ? '' : 'none';
-                craftGravyBtn.disabled = !showGravy || !canUseLeftover('gravy');
-                craftGravyBtn.textContent = `🛡️ Gravy Shield (${LEFTOVER_CONFIG.gravy.cost})`;
-            }
             if (craftCranberryBtn) {
-                const showCranberry = !isBossFightActive();
-                craftCranberryBtn.style.display = showCranberry ? '' : 'none';
-                craftCranberryBtn.disabled = !showCranberry || !canUseLeftover('cranberry');
-                craftCranberryBtn.textContent = `⚡ Cranberry Dash (${LEFTOVER_CONFIG.cranberry.cost})`;
+                craftCranberryBtn.style.display = '';
+                craftCranberryBtn.disabled = !canUseLeftover('cranberry');
+                craftCranberryBtn.textContent = `⚡ Speed Boost (${LEFTOVER_CONFIG.cranberry.cost})`;
             }
 
             if (!statusMessage) {
-                const abilityKey = getActiveAbilityKey();
-                const abilityState = leftoverBuffs[abilityKey];
-                const abilityConfig = LEFTOVER_CONFIG[abilityKey];
-                const abilityEmoji = abilityKey === 'gravy' ? '🛡️' : '⚡';
-                const abilityName = abilityKey === 'gravy' ? 'Gravy shield' : 'Cranberry dash';
+                const abilityState = leftoverBuffs.cranberry;
+                const abilityConfig = LEFTOVER_CONFIG.cranberry;
+                const abilityEmoji = '⚡';
+                const abilityName = 'Speed Boost';
                 if (abilityState.activeTimer > 0) {
                     statusMessage = `${abilityEmoji} ${abilityName} active!`;
                 } else if (abilityState.cooldownTimer > 0) {
@@ -1863,20 +1837,12 @@
         }
 
         function handleTurkeyDamage(reason) {
-            if (leftoverBuffs.gravy.activeTimer > 0) {
-                leftoverBuffs.gravy.activeTimer = 0;
-                spawnParticles(turkey.x, turkey.y, '#f5deb3', 24);
-                updateLeftoverUI('Gravy shield saved you!');
-                return false;
-            }
             gameOver(reason);
             return true;
         }
 
         function resetLeftovers() {
             leftoverBuffs.scraps = 0;
-            leftoverBuffs.gravy.activeTimer = 0;
-            leftoverBuffs.gravy.cooldownTimer = 0;
             leftoverBuffs.cranberry.activeTimer = 0;
             leftoverBuffs.cranberry.cooldownTimer = 0;
             updateLeftoverUI('Leftovers reset. Start cooking!');
@@ -1998,8 +1964,6 @@
             }
 
             // Update leftover timers
-            if (leftoverBuffs.gravy.activeTimer > 0) leftoverBuffs.gravy.activeTimer--;
-            if (leftoverBuffs.gravy.cooldownTimer > 0) leftoverBuffs.gravy.cooldownTimer--;
             if (leftoverBuffs.cranberry.activeTimer > 0) leftoverBuffs.cranberry.activeTimer--;
             if (leftoverBuffs.cranberry.cooldownTimer > 0) leftoverBuffs.cranberry.cooldownTimer--;
             leftoverUIFrame++;
@@ -2263,6 +2227,8 @@
                 }
             }
 
+            updateAuroraBlasts();
+
             updateParadeConfetti();
         }
 
@@ -2363,7 +2329,7 @@
                 if (boss.rechargeTimer <= 0) {
                     boss.isRecharging = false;
                     boss.attackTimer = 0;
-                    spawnParticles(boss.x, boss.y, '#7FFFD4', 10);
+                    triggerAuroraEnergyBlast();
                 }
                 return;
             }
@@ -2655,28 +2621,6 @@
             ctx.save();
             ctx.translate(turkey.x, turkey.y);
             ctx.scale(turkey.direction, 1);
-            
-            if (leftoverBuffs.gravy.activeTimer > 0) {
-                const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.12;
-                const shieldWidth = 60;
-                const shieldHeight = 40;
-                ctx.save();
-                ctx.scale(1 / turkey.direction, 1);
-                ctx.globalAlpha = 0.7;
-                ctx.fillStyle = 'rgba(222,184,135,0.35)';
-                ctx.beginPath();
-                ctx.ellipse(0, 5, shieldWidth * pulse, shieldHeight * pulse, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.lineWidth = 4;
-                ctx.strokeStyle = 'rgba(245,222,179,0.8)';
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.ellipse(0, 5, (shieldWidth - 12) * pulse, (shieldHeight - 8) * pulse, 0, 0, Math.PI * 2);
-                ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.restore();
-            }
             
             const scale = 1 + (turkey.evolution - 1) * 0.2;
             ctx.scale(scale, scale);
@@ -3557,6 +3501,36 @@
             ctx.setLineDash([]);
         }
 
+        function drawAuroraBlasts() {
+            auroraBlasts.forEach(blast => {
+                ctx.save();
+                const innerRadius = Math.max(10, blast.radius - 40);
+                const outerRadius = blast.radius + 80;
+                const gradient = ctx.createRadialGradient(
+                    blast.x,
+                    blast.y,
+                    innerRadius,
+                    blast.x,
+                    blast.y,
+                    outerRadius
+                );
+                gradient.addColorStop(0, `rgba(94,241,255,${blast.alpha * 0.4})`);
+                gradient.addColorStop(0.5, `rgba(168,85,255,${blast.alpha * 0.6})`);
+                gradient.addColorStop(1, 'rgba(8,17,32,0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(blast.x, blast.y, outerRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = `rgba(212,255,249,${blast.alpha})`;
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                ctx.arc(blast.x, blast.y, blast.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            });
+        }
+
         function drawRoamingAuroras() {
             if (!roamingAuroras.length) return;
             const time = Date.now() * 0.0005;
@@ -3623,6 +3597,17 @@
                     ctx.beginPath();
                     ctx.arc(0, 0, proj.size, 0, Math.PI * 2);
                     ctx.fill();
+                } else if (proj.type === 'auroraNova') {
+                    const pulse = 1 + Math.sin(Date.now() * 0.01 + proj.life * 0.05) * 0.15;
+                    const radius = proj.size * pulse;
+                    const gradient = ctx.createRadialGradient(0, 0, radius * 0.4, 0, 0, radius);
+                    gradient.addColorStop(0, 'rgba(255,255,255,0.9)');
+                    gradient.addColorStop(0.5, proj.color || 'rgba(126,255,212,0.8)');
+                    gradient.addColorStop(1, 'rgba(8,17,32,0)');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                    ctx.fill();
                 } else {
                     // Pie slice projectile
                     ctx.fillStyle = '#FF7518';
@@ -3674,7 +3659,10 @@
                     drawBomberBombs();
                 }
                 drawProjectiles();
-                if (boss && boss.type === BOSS_TYPES.AURORA) {
+                if (auroraBlasts.length) {
+                    drawAuroraBlasts();
+                }
+                if (auroraWaves.length) {
                     drawAuroraWaves();
                 }
                 drawPeckIndicator(); // Draw peck range indicator behind turkey

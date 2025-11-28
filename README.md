@@ -46,10 +46,10 @@ You've escaped the barn! Run through the beautiful autumn fields, collecting app
 The most dangerous level! A hunter is tracking you through the dark forest. Eat apples to level up while dodging bullets and avoiding capture!
 
 ### Level 4: Stealth Bomber Siege ✈️
-A cloaked B-2 bomber patrols the skies and drops a single mega bomb every 20 seconds. Duck behind makeshift bunkers and survive three bombing runs to advance.
+A cloaked B-2 bomber patrols the skies and drops a single mega bomb every 20 seconds. There’s no longer any cover along the runway, so keep moving and survive three bombing runs to advance.
 
 ### Level 5: Northern Lights Siege 🌌
-The final boss is a massive northern light monster that fires aurora orbs. When it arrives, glowing evergreens spawn so you can hide while it charges. Pineapples replace apples in this phase—use them (and your peck attack) to chip away at the monster’s health and survive the night!
+The final boss is a massive northern light monster that fires aurora orbs. It now spends 10 full seconds recharging before unleashing a screen-filling energy blast, so use the glowing evergreens and your speed boost to stay mobile. Pineapples replace apples in this phase—use them (and your peck attack) to chip away at the monster’s health and survive the night!
 
 ### Level 6: Corn Maze Migration 🌽
 After escaping the aurora beast, weave through a living corn labyrinth. The walls sway in the wind and block your path, so you’ll need to find the winding lane, harvest glowing cobs, and stay mobile.
@@ -66,7 +66,7 @@ Cap off the journey on a moonlit parade runway. Collect float parts, bolt them o
 - **Boss fight** against an evil Pumpkin Pie
 - **Hunter AI** that tracks and shoots at you
 - **XP progression bar** to track your progress
-- **Leftovers Lab** lets you spend scraps on Gravy Shields and Cranberry Dash boosts
+- **Leftovers Lab** lets you spend scraps on a Cranberry Speed Boost dash
 - **Corn maze gauntlet** with solid stalk barriers that reshape the mid-game challenge
 - **Parade float builder finale** complete with confetti bursts and stage props
 - **Autumn-themed** aesthetic with warm colors
