@@ -451,7 +451,7 @@
         
         <div class="ui-overlay">
             <div class="level-display" id="levelDisplay">Level 1: Barn Turkey Barn</div>
-            <div class="score-display">🍎 <span id="scoreDisplay">0</span></div>
+            <div class="score-display"><span id="scoreIcon" aria-hidden="true">🍎</span> <span id="scoreDisplay">0</span></div>
         </div>
         
         <div class="xp-bar-container">
@@ -484,10 +484,10 @@
         </div>
 
         <div class="boss-screen hidden" id="bossScreen">
-            <div style="font-size: 80px;">🥧</div>
+            <div style="font-size: 80px;" id="bossEmoji">🥧</div>
             <h1>Boss Fight!</h1>
-            <p class="boss-name">Pumpkin Pie</p>
-            <p class="instructions">The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck from range (<span class="desktop-controls">SPACE</span><span class="mobile-controls">double-tap</span>)<br>🦃 Or just <strong>EAT THE BOSS</strong> directly!</p>
+            <p class="boss-name" id="bossName">Pumpkin Pie</p>
+            <p class="instructions" id="bossInstructions">The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck from range (<span class="desktop-controls">SPACE</span><span class="mobile-controls">double-tap</span>)<br>🦃 Or just <strong>EAT THE BOSS</strong> directly!</p>
             <button class="btn" onclick="startBossFight()">Fight!</button>
         </div>
 
@@ -513,10 +513,19 @@
         const ctx = canvas.getContext('2d');
         const touchIndicator = document.getElementById('touchIndicator');
         const gameContainer = document.querySelector('.game-container');
+        const bossEmojiEl = document.getElementById('bossEmoji');
+        const bossNameEl = document.getElementById('bossName');
+        const bossInstructionsEl = document.getElementById('bossInstructions');
+        const scoreIconEl = document.getElementById('scoreIcon');
 
         // Base canvas dimensions (used for game logic)
         const BASE_WIDTH = 600;
         const BASE_HEIGHT = 800;
+
+        const BOSS_TYPES = {
+            PUMPKIN: 'pumpkinPie',
+            AURORA: 'auroraSpirit'
+        };
 
         // Game State
         let gameState = 'start'; // start, playing, levelup, boss, gameover, win
@@ -524,6 +533,7 @@
         let score = 0;
         let xp = 0;
         let xpNeeded = 10;
+        let nextBossType = null;
 
         // Touch state
         let touchActive = false;
@@ -545,7 +555,9 @@
         const levels = {
             1: { name: 'Barn Turkey Barn', xpNeeded: 10, bgColor: '#8B4513', description: 'Eat apples in the cozy barn!' },
             2: { name: 'Turkey Run', xpNeeded: 15, bgColor: '#228B22', description: 'Run through the autumn fields!' },
-            3: { name: 'Hunter Hunt Down', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Hide behind barriers to survive! The hunter is waking up...' }
+            3: { name: 'Hunter Hunt Down', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Hide behind barriers to survive! The hunter is waking up...' },
+            4: { name: 'Stealth Bomber Siege', xpNeeded: 3, bgColor: '#0f1a2b', description: 'B-2 bomber overhead! Survive 3 bombing runs.' },
+            5: { name: 'Northern Lights Siege', xpNeeded: 1, bgColor: '#082137', description: 'Aurora beast attacks! Pineapples fuel your survival.' }
         };
 
         // Turkey
@@ -569,6 +581,14 @@
 
         // Hunter (Level 3)
         let hunter = null;
+
+        // Bomber (Level 4)
+        let bomber = null;
+        let bomberBombs = [];
+        let bomberRoundsSurvived = 0;
+
+        // Northern lights effects
+        let auroraWaves = [];
 
         // Barriers for hiding
         let barriers = [];
@@ -601,29 +621,37 @@
             if (peckCooldown > 0) return;
             if (gameState !== 'boss' || !boss) return;
             
-            // Check if in range of boss
+            const bossRadius = boss.type === BOSS_TYPES.AURORA ? boss.radius : boss.width / 2;
             const distToBoss = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
             
-            if (distToBoss < PECK_RANGE + boss.width / 2) {
+            if (distToBoss < PECK_RANGE + bossRadius) {
                 // Successful peck!
                 isPecking = true;
                 peckAnimTimer = 15;
                 peckCooldown = PECK_COOLDOWN_MAX;
                 
                 // Damage boss
-                boss.health -= PECK_DAMAGE;
+                const damage = boss.type === BOSS_TYPES.AURORA ? PECK_DAMAGE + 1 : PECK_DAMAGE;
+                boss.health -= damage;
                 
                 // Visual feedback
-                spawnParticles(boss.x, boss.y, '#FF7518', 12);
+                const hitColor = boss.type === BOSS_TYPES.AURORA ? '#7FFFD4' : '#FF7518';
+                spawnParticles(boss.x, boss.y, hitColor, 12);
                 spawnParticles(turkey.x + turkey.direction * 30, turkey.y - 10, '#FFD700', 8);
                 
                 // Knockback effect on boss
-                boss.x += (boss.x - turkey.x) * 0.1;
+                if (boss.type !== BOSS_TYPES.AURORA) {
+                    boss.x += (boss.x - turkey.x) * 0.1;
+                }
                 
                 if (boss.health <= 0) {
-                    // Boss defeated!
-                    spawnParticles(boss.x, boss.y, '#FFD700', 30);
-                    spawnParticles(boss.x, boss.y, '#FF7518', 20);
+                    const primaryBurst = boss.type === BOSS_TYPES.AURORA ? '#7FFFD4' : '#FFD700';
+                    const secondaryBurst = boss.type === BOSS_TYPES.AURORA ? '#a855ff' : '#FF7518';
+                    spawnParticles(boss.x, boss.y, primaryBurst, 30);
+                    spawnParticles(boss.x, boss.y, secondaryBurst, 20);
+                    if (boss.type !== BOSS_TYPES.AURORA) {
+                        spawnParticles(boss.x, boss.y, '#FFFAF0', 15);
+                    }
                     boss = null;
                     levelUp();
                 }
@@ -726,6 +754,25 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
+        function configureBossScreen(type) {
+            if (type === BOSS_TYPES.AURORA) {
+                bossEmojiEl.textContent = '🌌';
+                bossNameEl.textContent = 'Northern Light Monster';
+                bossInstructionsEl.innerHTML = 'The Aurora Beast awakens!<br>🍍 Pineapples are your only ammo<br>🌲 Hide behind the glowing trees<br>👊 Peck or lob pineapples after it charges';
+            } else {
+                bossEmojiEl.textContent = '🥧';
+                bossNameEl.textContent = 'Pumpkin Pie';
+                bossInstructionsEl.innerHTML = 'The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Peck from range (<span class="desktop-controls">SPACE</span><span class="mobile-controls">double-tap</span>)<br>🦃 Or just <strong>EAT THE BOSS</strong> directly!';
+            }
+        }
+
+        function queueBossFight(type) {
+            nextBossType = type;
+            configureBossScreen(type);
+            document.getElementById('bossScreen').classList.remove('hidden');
+            gameState = 'boss'; // boss intro state
+        }
+
         function startGame() {
             document.getElementById('startScreen').classList.add('hidden');
             gameState = 'playing';
@@ -741,8 +788,9 @@
 
         function startBossFight() {
             document.getElementById('bossScreen').classList.add('hidden');
+            initBoss(nextBossType || BOSS_TYPES.PUMPKIN);
+            nextBossType = null;
             gameState = 'boss';
-            initBoss();
         }
 
         function restartGame() {
@@ -762,113 +810,305 @@
             apples = [];
             particles = [];
             bossProjectiles = [];
+            bomberBombs = [];
+            auroraWaves = [];
             boss = null;
             hunter = null;
+            bomber = null;
             barriers = [];
             xp = 0;
-            xpNeeded = levels[currentLevel].xpNeeded;
+            bomberRoundsSurvived = 0;
+            xpNeeded = (levels[currentLevel] && levels[currentLevel].xpNeeded) || 10;
             turkey.x = 300;
             turkey.y = 400;
             
-            // Spawn initial apples
-            for (let i = 0; i < 5; i++) {
-                spawnApple();
+            const shouldSpawnCollectibles = currentLevel !== 5;
+            const initialCollectibles = currentLevel === 4 ? 6 : 5;
+            if (shouldSpawnCollectibles) {
+                for (let i = 0; i < initialCollectibles; i++) {
+                    spawnApple();
+                }
             }
 
-            // Spawn hunter for level 3 - stays in the center
             if (currentLevel === 3) {
-                hunter = {
-                    x: BASE_WIDTH / 2,
-                    y: BASE_HEIGHT / 2,
-                    width: 50,
-                    height: 70,
-                    speed: 0, // Hunter doesn't move
-                    shootTimer: 0,
-                    graceTimer: 180, // 3 seconds before hunter starts shooting (60fps * 3)
-                    shotsFired: 0, // Track shots in current burst
-                    reloadTimer: 0, // 10 second reload after 3 shots
-                    isReloading: false
-                };
-                
-                // Spawn barriers for the turkey to hide behind
-                spawnBarriers();
-                
-                // Start turkey in a random corner away from hunter
-                const corners = [
-                    { x: 80, y: 100 },           // Top-left
-                    { x: BASE_WIDTH - 80, y: 100 },   // Top-right
-                    { x: 80, y: BASE_HEIGHT - 150 },  // Bottom-left
-                    { x: BASE_WIDTH - 80, y: BASE_HEIGHT - 150 } // Bottom-right
-                ];
-                const randomCorner = corners[Math.floor(Math.random() * corners.length)];
-                turkey.x = randomCorner.x;
-                turkey.y = randomCorner.y;
+                initHunterEncounter();
+            } else if (currentLevel === 4) {
+                spawnBarriersForLevel(4);
+                initBomberLevel();
+            } else if (currentLevel === 5) {
+                spawnBarriersForLevel(5);
+                queueBossFight(BOSS_TYPES.AURORA);
             }
 
             updateUI();
         }
         
-        function spawnBarriers() {
-            barriers = [];
-            
-            // Create barriers around the arena for the turkey to hide behind
-            const barrierPositions = [
-                // Four corners - safe spots
-                { x: 120, y: 150, type: 'haybale' },
-                { x: BASE_WIDTH - 120, y: 150, type: 'haybale' },
-                { x: 120, y: BASE_HEIGHT - 200, type: 'haybale' },
-                { x: BASE_WIDTH - 120, y: BASE_HEIGHT - 200, type: 'haybale' },
-                // Mid positions
-                { x: BASE_WIDTH / 2 - 150, y: BASE_HEIGHT / 2 - 100, type: 'rock' },
-                { x: BASE_WIDTH / 2 + 150, y: BASE_HEIGHT / 2 - 100, type: 'rock' },
-                { x: BASE_WIDTH / 2 - 150, y: BASE_HEIGHT / 2 + 150, type: 'rock' },
-                { x: BASE_WIDTH / 2 + 150, y: BASE_HEIGHT / 2 + 150, type: 'rock' },
-                // Near the hunter but not blocking spawn
-                { x: BASE_WIDTH / 2, y: BASE_HEIGHT / 2 - 180, type: 'tree' },
-                { x: BASE_WIDTH / 2, y: BASE_HEIGHT / 2 + 200, type: 'tree' }
-            ];
-            
-            barrierPositions.forEach(pos => {
-                barriers.push({
-                    x: pos.x,
-                    y: pos.y,
-                    width: pos.type === 'tree' ? 40 : 60,
-                    height: pos.type === 'tree' ? 80 : 45,
-                    type: pos.type
-                });
-            });
-        }
-
-        function initBoss() {
-            boss = {
-                x: 300,
-                y: 150,
-                width: 100,
-                height: 100,
-                health: 10,
-                maxHealth: 10,
-                speed: 2,
-                direction: 1,
-                attackTimer: 0,
-                opacity: 1, // Boss starts fully visible
-                shotsThrown: 0, // Track how many projectiles thrown
-                missingSlices: [], // Track which slice angles are missing
-                currentScale: 1 // Visual scale that shrinks as pieces are thrown
+        function initHunterEncounter() {
+            hunter = {
+                x: BASE_WIDTH / 2,
+                y: BASE_HEIGHT / 2,
+                width: 50,
+                height: 70,
+                speed: 0,
+                shootTimer: 0,
+                graceTimer: 180,
+                shotsFired: 0,
+                reloadTimer: 0,
+                isReloading: false
             };
             
-            // Start turkey in a random corner for boss fights
+            spawnBarriersForLevel(3);
+            
             const corners = [
-                { x: 80, y: BASE_HEIGHT - 150 },      // Bottom-left
-                { x: BASE_WIDTH - 80, y: BASE_HEIGHT - 150 }, // Bottom-right
-                { x: 80, y: BASE_HEIGHT - 300 },      // Mid-left
-                { x: BASE_WIDTH - 80, y: BASE_HEIGHT - 300 }  // Mid-right
+                { x: 80, y: 100 },
+                { x: BASE_WIDTH - 80, y: 100 },
+                { x: 80, y: BASE_HEIGHT - 150 },
+                { x: BASE_WIDTH - 80, y: BASE_HEIGHT - 150 }
+            ];
+            const randomCorner = corners[Math.floor(Math.random() * corners.length)];
+            turkey.x = randomCorner.x;
+            turkey.y = randomCorner.y;
+        }
+
+        function spawnBarriersForLevel(level) {
+            barriers = [];
+            if (level === 3) {
+                const barrierPositions = [
+                    { x: 120, y: 150, type: 'haybale' },
+                    { x: BASE_WIDTH - 120, y: 150, type: 'haybale' },
+                    { x: 120, y: BASE_HEIGHT - 200, type: 'haybale' },
+                    { x: BASE_WIDTH - 120, y: BASE_HEIGHT - 200, type: 'haybale' },
+                    { x: BASE_WIDTH / 2 - 150, y: BASE_HEIGHT / 2 - 100, type: 'rock' },
+                    { x: BASE_WIDTH / 2 + 150, y: BASE_HEIGHT / 2 - 100, type: 'rock' },
+                    { x: BASE_WIDTH / 2 - 150, y: BASE_HEIGHT / 2 + 150, type: 'rock' },
+                    { x: BASE_WIDTH / 2 + 150, y: BASE_HEIGHT / 2 + 150, type: 'rock' },
+                    { x: BASE_WIDTH / 2, y: BASE_HEIGHT / 2 - 180, type: 'tree' },
+                    { x: BASE_WIDTH / 2, y: BASE_HEIGHT / 2 + 200, type: 'tree' }
+                ];
+                
+                barrierPositions.forEach(pos => {
+                    barriers.push({
+                        x: pos.x,
+                        y: pos.y,
+                        width: pos.type === 'tree' ? 40 : 60,
+                        height: pos.type === 'tree' ? 80 : 45,
+                        type: pos.type
+                    });
+                });
+            } else if (level === 4) {
+                const bunkerRows = [
+                    { x: BASE_WIDTH / 2 - 200, y: BASE_HEIGHT - 220 },
+                    { x: BASE_WIDTH / 2, y: BASE_HEIGHT - 260 },
+                    { x: BASE_WIDTH / 2 + 200, y: BASE_HEIGHT - 220 }
+                ];
+                bunkerRows.forEach(pos => {
+                    barriers.push({
+                        x: pos.x,
+                        y: pos.y,
+                        width: 80,
+                        height: 40,
+                        type: 'bunker'
+                    });
+                });
+                // scatter trees for cover
+                for (let i = 0; i < 4; i++) {
+                    barriers.push({
+                        x: 80 + i * 120,
+                        y: 200 + (i % 2) * 150,
+                        width: 40,
+                        height: 90,
+                        type: 'tree'
+                    });
+                }
+            } else if (level === 5) {
+                // glowing pine obstacles
+                const crystalRings = [
+                    { x: BASE_WIDTH / 2 - 180, y: BASE_HEIGHT / 2, type: 'auroraTree' },
+                    { x: BASE_WIDTH / 2 + 180, y: BASE_HEIGHT / 2, type: 'auroraTree' },
+                    { x: BASE_WIDTH / 2, y: BASE_HEIGHT / 2 - 160, type: 'auroraTree' },
+                    { x: BASE_WIDTH / 2, y: BASE_HEIGHT / 2 + 160, type: 'auroraTree' },
+                    { x: BASE_WIDTH / 2 - 90, y: BASE_HEIGHT / 2 + 120, type: 'iceWall' },
+                    { x: BASE_WIDTH / 2 + 90, y: BASE_HEIGHT / 2 + 120, type: 'iceWall' }
+                ];
+                crystalRings.forEach(pos => {
+                    barriers.push({
+                        x: pos.x,
+                        y: pos.y,
+                        width: pos.type === 'iceWall' ? 70 : 50,
+                        height: pos.type === 'iceWall' ? 120 : 100,
+                        type: pos.type
+                    });
+                });
+            }
+        }
+
+        function initBomberLevel() {
+            bomber = {
+                x: BASE_WIDTH / 2,
+                y: 140,
+                width: 160,
+                height: 50,
+                direction: 1,
+                speed: 1.5,
+                stealthPulse: 0,
+                graceTimer: 180,
+                isReloading: false,
+                reloadTimer: 0,
+                reloadFrames: 1200, // 20 seconds at ~60fps
+                activeBomb: null,
+                roundsToSurvive: 3
+            };
+        }
+
+        function dropBomberBomb() {
+            if (!bomber) return;
+            const targetX = turkey.x + (Math.random() - 0.5) * 120;
+            const bomb = {
+                x: bomber.x,
+                y: bomber.y + 30,
+                vx: (targetX - bomber.x) / 120,
+                vy: 1.5,
+                gravity: 0.08,
+                exploded: false,
+                explosionRadius: 120,
+                trailTimer: 0
+            };
+            bomberBombs.push(bomb);
+            bomber.activeBomb = bomb;
+            bomber.isReloading = true;
+            bomber.reloadTimer = 0;
+        }
+
+        function updateBomber() {
+            if (!bomber || currentLevel !== 4 || gameState !== 'playing') return;
+            
+            bomber.stealthPulse += 0.02;
+            bomber.x += bomber.speed * bomber.direction;
+            if (bomber.x < 80 || bomber.x > BASE_WIDTH - 80) {
+                bomber.direction *= -1;
+            }
+
+            if (bomber.graceTimer > 0) {
+                bomber.graceTimer--;
+                return;
+            }
+
+            if (!bomber.activeBomb && !bomber.isReloading && bomberRoundsSurvived < bomber.roundsToSurvive) {
+                dropBomberBomb();
+            }
+
+            if (bomber.isReloading) {
+                bomber.reloadTimer++;
+                if (bomber.reloadTimer >= bomber.reloadFrames) {
+                    bomber.isReloading = false;
+                    bomber.reloadTimer = 0;
+                    bomber.activeBomb = null;
+                }
+            }
+        }
+
+        function resolveBombExplosion(bomb) {
+            spawnParticles(bomb.x, bomb.y, '#FFA500', 20);
+            spawnParticles(bomb.x, bomb.y, '#FF4500', 20);
+            const dist = Math.hypot(turkey.x - bomb.x, turkey.y - bomb.y);
+            if (dist < bomb.explosionRadius) {
+                gameOver('The stealth bomber roasted you!');
+                return true;
+            }
+            bomberRoundsSurvived++;
+            xp = bomberRoundsSurvived;
+            bomber.activeBomb = null;
+            if (bomberRoundsSurvived >= bomber.roundsToSurvive) {
+                levelUp();
+            }
+            updateUI();
+            return false;
+        }
+
+        function updateBomberBombs() {
+            if (!bomber || currentLevel !== 4) return;
+            for (let i = bomberBombs.length - 1; i >= 0; i--) {
+                const bomb = bomberBombs[i];
+                if (!bomb.exploded) {
+                    bomb.vy += bomb.gravity;
+                    bomb.x += bomb.vx;
+                    bomb.y += bomb.vy;
+                    
+                    bomb.trailTimer++;
+                    if (bomb.trailTimer % 5 === 0) {
+                        spawnParticles(bomb.x, bomb.y, '#B0C4DE', 2);
+                    }
+
+                    // Barrier collision
+                    for (let j = 0; j < barriers.length; j++) {
+                        const barrier = barriers[j];
+                        if (bomb.x > barrier.x - barrier.width / 2 &&
+                            bomb.x < barrier.x + barrier.width / 2 &&
+                            bomb.y > barrier.y - barrier.height / 2 &&
+                            bomb.y < barrier.y + barrier.height / 2) {
+                            bomb.exploded = true;
+                            barriers.splice(j, 1);
+                            if (resolveBombExplosion(bomb)) return;
+                            bomberBombs.splice(i, 1);
+                            break;
+                        }
+                    }
+
+                    if (bomb.y >= BASE_HEIGHT - 80) {
+                        bomb.exploded = true;
+                        if (resolveBombExplosion(bomb)) return;
+                        bomberBombs.splice(i, 1);
+                        continue;
+                    }
+                }
+            }
+        }
+
+        function initBoss(type = BOSS_TYPES.PUMPKIN) {
+            if (type === BOSS_TYPES.AURORA) {
+                boss = {
+                    type,
+                    x: BASE_WIDTH / 2,
+                    y: BASE_HEIGHT / 2 - 120,
+                    radius: 90,
+                    health: 18,
+                    maxHealth: 18,
+                    attackTimer: 0,
+                    graceTimer: 240,
+                    pulse: 0
+                };
+            } else {
+                boss = {
+                    type: BOSS_TYPES.PUMPKIN,
+                    x: 300,
+                    y: 150,
+                    width: 100,
+                    height: 100,
+                    health: 10,
+                    maxHealth: 10,
+                    speed: 2,
+                    direction: 1,
+                    attackTimer: 0,
+                    opacity: 1,
+                    shotsThrown: 0,
+                    missingSlices: [],
+                    currentScale: 1
+                };
+            }
+            
+            const corners = [
+                { x: 80, y: BASE_HEIGHT - 150 },
+                { x: BASE_WIDTH - 80, y: BASE_HEIGHT - 150 },
+                { x: 80, y: BASE_HEIGHT - 300 },
+                { x: BASE_WIDTH - 80, y: BASE_HEIGHT - 300 }
             ];
             const randomCorner = corners[Math.floor(Math.random() * corners.length)];
             turkey.x = randomCorner.x;
             turkey.y = randomCorner.y;
             
             apples = [];
-            for (let i = 0; i < 3; i++) {
+            const initialDrops = type === BOSS_TYPES.AURORA ? 6 : 3;
+            for (let i = 0; i < initialDrops; i++) {
                 spawnApple();
             }
         }
@@ -898,14 +1138,30 @@
         }
 
         function updateUI() {
-            // Don't update UI if game is won (level 4+ doesn't exist)
             if (gameState === 'win' || !levels[currentLevel]) return;
             
+            scoreIconEl.textContent = currentLevel === 5 ? '🍍' : '🍎';
             document.getElementById('levelDisplay').textContent = `Level ${currentLevel}: ${levels[currentLevel].name}`;
             document.getElementById('scoreDisplay').textContent = score;
-            const xpPercent = (xp / xpNeeded) * 100;
+
+            let filled = xp;
+            let needed = xpNeeded;
+            let label = 'XP';
+
+            if (currentLevel === 4) {
+                filled = bomberRoundsSurvived;
+                needed = (bomber && bomber.roundsToSurvive) || xpNeeded;
+                label = 'Rounds Survived';
+            } else if (currentLevel === 5 && boss && boss.type === BOSS_TYPES.AURORA) {
+                filled = Math.max(0, boss.health);
+                needed = boss.maxHealth;
+                label = 'Boss HP';
+            }
+
+            const xpPercent = needed > 0 ? Math.min(100, (filled / needed) * 100) : 0;
             document.getElementById('xpBar').style.width = xpPercent + '%';
-            document.getElementById('xpText').textContent = `${xp} / ${xpNeeded} XP`;
+            const displayValue = Math.max(0, Math.round(filled));
+            document.getElementById('xpText').textContent = `${label}: ${displayValue} / ${needed}`;
         }
 
         function update() {
@@ -965,28 +1221,29 @@
                 const apple = apples[i];
                 const dist = Math.hypot(turkey.x - apple.x, turkey.y - apple.y);
                 if (dist < turkey.width / 2 + apple.size / 2) {
-                    // Eat apple!
-                    spawnParticles(apple.x, apple.y, '#FF0000', 8);
-                    spawnParticles(apple.x, apple.y, '#00FF00', 4);
+                    const isPineappleRound = currentLevel === 5;
+                    const fruitColor = isPineappleRound ? '#FFA500' : '#FF0000';
+                    const leafColor = isPineappleRound ? '#2E8B57' : '#00FF00';
+                    spawnParticles(apple.x, apple.y, fruitColor, 8);
+                    spawnParticles(apple.x, apple.y, leafColor, 4);
                     apples.splice(i, 1);
                     score++;
                     
                     if (gameState === 'boss' && boss) {
-                        boss.health--;
-                        spawnParticles(boss.x, boss.y, '#FF7518', 15);
+                        const damage = boss.type === BOSS_TYPES.AURORA ? 2 : 1;
+                        boss.health -= damage;
+                        const bossParticleColor = boss.type === BOSS_TYPES.AURORA ? '#7FFFD4' : '#FF7518';
+                        spawnParticles(boss.x, boss.y, bossParticleColor, 15);
                         if (boss.health <= 0) {
-                            // Boss defeated!
                             spawnParticles(boss.x, boss.y, '#FFD700', 30);
                             boss = null;
                             levelUp();
                         }
-                    } else {
+                    } else if (currentLevel !== 4 && gameState !== 'boss') {
                         xp++;
                         if (xp >= xpNeeded) {
                             if (currentLevel === 1) {
-                                // Show boss screen after level 1
-                                gameState = 'boss';
-                                document.getElementById('bossScreen').classList.remove('hidden');
+                                queueBossFight(BOSS_TYPES.PUMPKIN);
                             } else {
                                 levelUp();
                             }
@@ -1000,89 +1257,10 @@
 
             // Update boss
             if (gameState === 'boss' && boss) {
-                boss.x += boss.speed * boss.direction;
-                if (boss.x < 100 || boss.x > BASE_WIDTH - 100) {
-                    boss.direction *= -1;
-                }
-
-                boss.attackTimer++;
-                if (boss.attackTimer > 60) {
-                    boss.attackTimer = 0;
-                    
-                    // Calculate slice angle that will be "thrown off"
-                    const sliceAngle = (boss.shotsThrown % 8) * (Math.PI / 4); // 8 slices around the pie
-                    boss.missingSlices.push(sliceAngle);
-                    
-                    // Shoot projectile from the edge where the slice came off
-                    const throwOffsetX = Math.cos(sliceAngle + Math.PI / 8) * (boss.width / 2 * boss.currentScale);
-                    const throwOffsetY = Math.sin(sliceAngle + Math.PI / 8) * (boss.height / 2 * boss.currentScale);
-                    
-                    bossProjectiles.push({
-                        x: boss.x + throwOffsetX,
-                        y: boss.y + throwOffsetY,
-                        vx: (Math.random() - 0.5) * 4 + throwOffsetX * 0.05,
-                        vy: 6,
-                        size: 20
-                    });
-                    
-                    // Boss loses health and shrinks when throwing pies!
-                    boss.shotsThrown++;
-                    boss.health -= 0.3; // Lose a small amount of health per shot
-                    boss.currentScale = Math.max(0.4, 1 - (boss.shotsThrown * 0.06)); // Shrink as pieces are thrown
-                    boss.opacity = Math.max(0.3, 1 - (boss.shotsThrown * 0.03)); // Fade slowly too
-                    
-                    // Visual feedback - chunks coming off from where the slice was
-                    spawnParticles(boss.x + throwOffsetX, boss.y + throwOffsetY, '#FF7518', 10);
-                    spawnParticles(boss.x + throwOffsetX, boss.y + throwOffsetY, '#DEB887', 6); // Crust pieces
-                    spawnParticles(boss.x + throwOffsetX, boss.y + throwOffsetY, '#FFFAF0', 4); // Whipped cream
-                    
-                    // Check if boss defeated itself by throwing too many pies
-                    if (boss.health <= 0) {
-                        spawnParticles(boss.x, boss.y, '#FFD700', 30);
-                        spawnParticles(boss.x, boss.y, '#FF7518', 20);
-                        spawnParticles(boss.x, boss.y, '#FFFAF0', 15);
-                        boss = null;
-                        levelUp();
-                    }
-                    
-                    updateUI();
-                }
-
-                // Turkey can EAT the boss by touching it!
-                const distToBoss = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
-                const eatRange = turkey.width / 2 + boss.width / 2 - 10; // Slightly smaller for more intentional eating
-                
-                if (distToBoss < eatRange) {
-                    // Turkey is eating the boss!
-                    boss.eatCooldown = boss.eatCooldown || 0;
-                    boss.eatCooldown--;
-                    
-                    if (boss.eatCooldown <= 0) {
-                        boss.eatCooldown = 20; // Cooldown between bites
-                        boss.health -= 2; // Eating does more damage than pecking!
-                        
-                        // Big chomp visual feedback
-                        turkey.mouthOpen = 1; // Force mouth wide open
-                        spawnParticles(boss.x, boss.y, '#FF7518', 15);
-                        spawnParticles(boss.x, boss.y, '#DEB887', 8); // Crust particles
-                        spawnParticles(turkey.x + turkey.direction * 30, turkey.y, '#FFD700', 5);
-                        
-                        // Push boss away slightly
-                        const pushDir = boss.x > turkey.x ? 1 : -1;
-                        boss.x += pushDir * 15;
-                        
-                        if (boss.health <= 0) {
-                            // Boss defeated by eating!
-                            spawnParticles(boss.x, boss.y, '#FFD700', 40);
-                            spawnParticles(boss.x, boss.y, '#FF7518', 30);
-                            spawnParticles(boss.x, boss.y, '#FFFAF0', 20); // Whipped cream explosion
-                            boss = null;
-                            score += 5; // Bonus for eating the boss!
-                            levelUp();
-                        }
-                        
-                        updateUI();
-                    }
+                if (boss.type === BOSS_TYPES.AURORA) {
+                    updateAuroraBoss();
+                } else {
+                    updatePumpkinBoss();
                 }
             }
 
@@ -1113,7 +1291,9 @@
                             vx: Math.cos(angle) * 7,
                             vy: Math.sin(angle) * 7,
                             size: 15,
-                            isHunter: true
+                            isHunter: true,
+                            type: 'bullet',
+                            onHitMessage: 'You got shot!'
                         });
                         
                         hunter.shotsFired++;
@@ -1126,6 +1306,11 @@
 
             }
 
+            if (currentLevel === 4 && gameState === 'playing') {
+                updateBomber();
+                updateBomberBombs();
+            }
+
             // Update projectiles
             for (let i = bossProjectiles.length - 1; i >= 0; i--) {
                 const proj = bossProjectiles[i];
@@ -1135,7 +1320,8 @@
                 // Check collision with turkey
                 const dist = Math.hypot(turkey.x - proj.x, turkey.y - proj.y);
                 if (dist < turkey.width / 2 + proj.size / 2) {
-                    gameOver(proj.isHunter ? 'You got shot!' : 'The pie got you!');
+                    const message = proj.onHitMessage || (proj.isHunter ? 'You got shot!' : 'You were blasted!');
+                    gameOver(message);
                     return;
                 }
                 
@@ -1147,7 +1333,8 @@
                         proj.y > barrier.y - barrier.height / 2 &&
                         proj.y < barrier.y + barrier.height / 2) {
                         // Projectile hit barrier - destroy it with particles
-                        spawnParticles(proj.x, proj.y, proj.isHunter ? '#555' : '#FF7518', 6);
+                        const impactColor = proj.type === 'aurora' ? '#7FFFD4' : (proj.isHunter ? '#555' : '#FF7518');
+                        spawnParticles(proj.x, proj.y, impactColor, 6);
                         bossProjectiles.splice(i, 1);
                         hitBarrier = true;
                         break;
@@ -1172,14 +1359,140 @@
                     particles.splice(i, 1);
                 }
             }
+
+            for (let i = auroraWaves.length - 1; i >= 0; i--) {
+                const wave = auroraWaves[i];
+                wave.radius += 3;
+                wave.alpha -= 0.01;
+                if (wave.alpha <= 0 || wave.radius >= wave.maxRadius) {
+                    auroraWaves.splice(i, 1);
+                }
+            }
         }
 
+        function updatePumpkinBoss() {
+            boss.x += boss.speed * boss.direction;
+            if (boss.x < 100 || boss.x > BASE_WIDTH - 100) {
+                boss.direction *= -1;
+            }
+
+            boss.attackTimer++;
+            if (boss.attackTimer > 60) {
+                boss.attackTimer = 0;
+                
+                const sliceAngle = (boss.shotsThrown % 8) * (Math.PI / 4);
+                boss.missingSlices.push(sliceAngle);
+                
+                const throwOffsetX = Math.cos(sliceAngle + Math.PI / 8) * (boss.width / 2 * boss.currentScale);
+                const throwOffsetY = Math.sin(sliceAngle + Math.PI / 8) * (boss.height / 2 * boss.currentScale);
+                
+                bossProjectiles.push({
+                    x: boss.x + throwOffsetX,
+                    y: boss.y + throwOffsetY,
+                    vx: (Math.random() - 0.5) * 4 + throwOffsetX * 0.05,
+                    vy: 6,
+                    size: 20,
+                    type: 'pie',
+                    onHitMessage: 'The pie got you!'
+                });
+                
+                boss.shotsThrown++;
+                boss.health -= 0.3;
+                boss.currentScale = Math.max(0.4, 1 - (boss.shotsThrown * 0.06));
+                boss.opacity = Math.max(0.3, 1 - (boss.shotsThrown * 0.03));
+                
+                spawnParticles(boss.x + throwOffsetX, boss.y + throwOffsetY, '#FF7518', 10);
+                spawnParticles(boss.x + throwOffsetX, boss.y + throwOffsetY, '#DEB887', 6);
+                spawnParticles(boss.x + throwOffsetX, boss.y + throwOffsetY, '#FFFAF0', 4);
+                
+                if (boss.health <= 0) {
+                    spawnParticles(boss.x, boss.y, '#FFD700', 30);
+                    spawnParticles(boss.x, boss.y, '#FF7518', 20);
+                    spawnParticles(boss.x, boss.y, '#FFFAF0', 15);
+                    boss = null;
+                    levelUp();
+                }
+                
+                updateUI();
+            }
+
+            const distToBoss = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
+            const eatRange = turkey.width / 2 + boss.width / 2 - 10;
+            
+            if (distToBoss < eatRange) {
+                boss.eatCooldown = boss.eatCooldown || 0;
+                boss.eatCooldown--;
+                
+                if (boss.eatCooldown <= 0) {
+                    boss.eatCooldown = 20;
+                    boss.health -= 2;
+                    
+                    turkey.mouthOpen = 1;
+                    spawnParticles(boss.x, boss.y, '#FF7518', 15);
+                    spawnParticles(boss.x, boss.y, '#DEB887', 8);
+                    spawnParticles(turkey.x + turkey.direction * 30, turkey.y, '#FFD700', 5);
+                    
+                    const pushDir = boss.x > turkey.x ? 1 : -1;
+                    boss.x += pushDir * 15;
+                    
+                    if (boss.health <= 0) {
+                        spawnParticles(boss.x, boss.y, '#FFD700', 40);
+                        spawnParticles(boss.x, boss.y, '#FF7518', 30);
+                        spawnParticles(boss.x, boss.y, '#FFFAF0', 20);
+                        boss = null;
+                        score += 5;
+                        levelUp();
+                    }
+                    
+                    updateUI();
+                }
+            }
+        }
+
+        function updateAuroraBoss() {
+            boss.pulse += 0.02;
+
+            if (boss.graceTimer > 0) {
+                boss.graceTimer--;
+                return;
+            }
+
+            boss.attackTimer++;
+
+            if (boss.attackTimer % 45 === 0) {
+                const volley = 3;
+                const baseAngle = Math.atan2(turkey.y - boss.y, turkey.x - boss.x);
+                for (let i = 0; i < volley; i++) {
+                    const offset = (i - 1) * 0.2;
+                    bossProjectiles.push({
+                        x: boss.x,
+                        y: boss.y,
+                        vx: Math.cos(baseAngle + offset) * 4.5,
+                        vy: Math.sin(baseAngle + offset) * 4.5,
+                        size: 22,
+                        type: 'aurora',
+                        color: `hsl(${180 + i * 40}, 80%, 70%)`,
+                        onHitMessage: 'The northern lights consumed you!'
+                    });
+                }
+                spawnParticles(boss.x, boss.y, '#7FFFD4', 12);
+            }
+
+            if (boss.attackTimer % 180 === 0) {
+                auroraWaves.push({
+                    x: boss.x,
+                    y: boss.y,
+                    radius: boss.radius,
+                    maxRadius: boss.radius + 260,
+                    alpha: 0.7
+                });
+            }
+        }
         function levelUp() {
             currentLevel++;
             turkey.evolution++;
             
-            if (currentLevel > 3) {
-                // Win!
+            if (currentLevel > 5) {
                 gameState = 'win';
                 document.getElementById('winScore').textContent = score;
                 document.getElementById('winScreen').classList.remove('hidden');
@@ -1200,86 +1513,127 @@
         }
 
         function drawBackground() {
-            // Sky gradient based on level
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            const isPumpkinBossField = boss && boss.type === BOSS_TYPES.PUMPKIN && currentLevel === 1;
+            const isAuroraBattle = boss && boss.type === BOSS_TYPES.AURORA;
+            const backdropLevel = isAuroraBattle ? 5 : (isPumpkinBossField ? 2 : currentLevel);
             
-            if (currentLevel === 1) {
-                // Barn - warm indoor
-                gradient.addColorStop(0, '#8B4513');
-                gradient.addColorStop(1, '#5D3A1A');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Draw barn planks
-                ctx.strokeStyle = '#4A2C17';
-                ctx.lineWidth = 2;
-                for (let i = 0; i < canvas.width; i += 60) {
-                    ctx.beginPath();
-                    ctx.moveTo(i, 0);
-                    ctx.lineTo(i, canvas.height);
-                    ctx.stroke();
+            switch (backdropLevel) {
+                case 1: {
+                    gradient.addColorStop(0, '#8B4513');
+                    gradient.addColorStop(1, '#5D3A1A');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.strokeStyle = '#4A2C17';
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < canvas.width; i += 60) {
+                        ctx.beginPath();
+                        ctx.moveTo(i, 0);
+                        ctx.lineTo(i, canvas.height);
+                        ctx.stroke();
+                    }
+                    
+                    ctx.fillStyle = '#DAA520';
+                    for (let i = 0; i < 40; i++) {
+                        ctx.beginPath();
+                        ctx.ellipse(
+                            (i * 25) % canvas.width,
+                            canvas.height - 30 + Math.sin(i) * 10,
+                            20, 8, 0, 0, Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                    break;
                 }
-                
-                // Hay on ground
-                ctx.fillStyle = '#DAA520';
-                for (let i = 0; i < 40; i++) {
+                case 2: {
+                    gradient.addColorStop(0, '#87CEEB');
+                    gradient.addColorStop(0.6, '#FDB347');
+                    gradient.addColorStop(1, '#228B22');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = '#228B22';
+                    ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
+                    
+                    for (let i = 0; i < 4; i++) {
+                        const tx = i * 160 + 50;
+                        ctx.fillStyle = '#5D3A1A';
+                        ctx.fillRect(tx - 10, canvas.height - 180, 20, 100);
+                        ctx.beginPath();
+                        ctx.fillStyle = ['#FF6347', '#FF8C00', '#FFD700', '#DC143C'][i % 4];
+                        ctx.arc(tx, canvas.height - 200, 50, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    break;
+                }
+                case 4: {
+                    gradient.addColorStop(0, '#030711');
+                    gradient.addColorStop(1, '#0f1a2b');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = '#ffffff22';
+                    for (let i = 0; i < 80; i++) {
+                        ctx.beginPath();
+                        ctx.arc(Math.random() * canvas.width, Math.random() * 200, Math.random() * 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    ctx.fillStyle = '#1a3a1a';
+                    ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+                    break;
+                }
+                case 5: {
+                    gradient.addColorStop(0, '#05030f');
+                    gradient.addColorStop(0.5, '#112144');
+                    gradient.addColorStop(1, '#04121f');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    const auroraColors = ['#5ef1ff', '#a855ff', '#5ef179', '#ffd15e'];
+                    auroraColors.forEach((color, index) => {
+                        ctx.beginPath();
+                        ctx.moveTo(0, 200 + index * 30);
+                        for (let x = 0; x <= canvas.width; x += 20) {
+                            const y = 200 + index * 30 + Math.sin((x / canvas.width) * Math.PI * 2 + index) * 40;
+                            ctx.lineTo(x, y);
+                        }
+                        ctx.lineTo(canvas.width, canvas.height);
+                        ctx.lineTo(0, canvas.height);
+                        ctx.closePath();
+                        ctx.fillStyle = color + '33';
+                        ctx.fill();
+                    });
+                    
+                    ctx.fillStyle = '#0b1d2c';
+                    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+                    break;
+                }
+                default: {
+                    gradient.addColorStop(0, '#1a1a2e');
+                    gradient.addColorStop(1, '#16213e');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = '#FFFACD';
                     ctx.beginPath();
-                    ctx.ellipse(
-                        (i * 25) % canvas.width,
-                        canvas.height - 30 + Math.sin(i) * 10,
-                        20, 8, 0, 0, Math.PI * 2
-                    );
+                    ctx.arc(500, 80, 40, 0, Math.PI * 2);
                     ctx.fill();
+                    
+                    ctx.fillStyle = '#0f0f23';
+                    for (let i = 0; i < 6; i++) {
+                        const tx = i * 100;
+                        ctx.beginPath();
+                        ctx.moveTo(tx, canvas.height);
+                        ctx.lineTo(tx + 40, canvas.height - 250 - Math.random() * 100);
+                        ctx.lineTo(tx + 80, canvas.height);
+                        ctx.fill();
+                    }
+                    
+                    ctx.fillStyle = '#2d4a3e';
+                    ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
                 }
-            } else if (currentLevel === 2 || (gameState === 'boss' && currentLevel === 1)) {
-                // Outdoor autumn field
-                gradient.addColorStop(0, '#87CEEB');
-                gradient.addColorStop(0.6, '#FDB347');
-                gradient.addColorStop(1, '#228B22');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Draw grass
-                ctx.fillStyle = '#228B22';
-                ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
-                
-                // Autumn trees
-                for (let i = 0; i < 4; i++) {
-                    const tx = i * 160 + 50;
-                    ctx.fillStyle = '#5D3A1A';
-                    ctx.fillRect(tx - 10, canvas.height - 180, 20, 100);
-                    ctx.beginPath();
-                    ctx.fillStyle = ['#FF6347', '#FF8C00', '#FFD700', '#DC143C'][i % 4];
-                    ctx.arc(tx, canvas.height - 200, 50, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            } else {
-                // Night forest - hunter level
-                gradient.addColorStop(0, '#1a1a2e');
-                gradient.addColorStop(1, '#16213e');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Moon
-                ctx.fillStyle = '#FFFACD';
-                ctx.beginPath();
-                ctx.arc(500, 80, 40, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Dark trees
-                ctx.fillStyle = '#0f0f23';
-                for (let i = 0; i < 6; i++) {
-                    const tx = i * 100;
-                    ctx.beginPath();
-                    ctx.moveTo(tx, canvas.height);
-                    ctx.lineTo(tx + 40, canvas.height - 250 - Math.random() * 100);
-                    ctx.lineTo(tx + 80, canvas.height);
-                    ctx.fill();
-                }
-                
-                // Ground
-                ctx.fillStyle = '#2d4a3e';
-                ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
             }
         }
 
@@ -1419,6 +1773,32 @@
             ctx.save();
             ctx.translate(apple.x, apple.y + Math.sin(Date.now() / 300 + apple.bobOffset) * 5);
             
+            if (currentLevel === 5) {
+                // Pineapple body
+                ctx.fillStyle = '#FFB347';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, apple.size / 2.2, apple.size / 1.6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = '#D67A00';
+                ctx.lineWidth = 2;
+                for (let i = -2; i <= 2; i++) {
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, apple.size / 2.5, apple.size / 1.8, i * 0.4, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Leaves
+                ctx.fillStyle = '#1f8a5c';
+                for (let i = 0; i < 4; i++) {
+                    ctx.beginPath();
+                    ctx.ellipse((i - 1.5) * 5, -apple.size / 1.4 - i * 2, 6, 16, (i - 1.5) * 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+                return;
+            }
+            
             // Apple body
             ctx.fillStyle = '#FF0000';
             ctx.beginPath();
@@ -1452,7 +1832,8 @@
             if (gameState !== 'boss' || !boss) return;
             
             const distToBoss = Math.hypot(turkey.x - boss.x, turkey.y - boss.y);
-            const inRange = distToBoss < PECK_RANGE + boss.width / 2;
+            const bossRadius = boss.type === BOSS_TYPES.AURORA ? boss.radius : boss.width / 2;
+            const inRange = distToBoss < PECK_RANGE + bossRadius;
             
             // Draw range circle around turkey
             ctx.save();
@@ -1488,7 +1869,14 @@
 
         function drawBoss() {
             if (!boss) return;
-            
+            if (boss.type === BOSS_TYPES.AURORA) {
+                drawAuroraBossSprite();
+            } else {
+                drawPumpkinBossSprite();
+            }
+        }
+
+        function drawPumpkinBossSprite() {
             ctx.save();
             ctx.translate(boss.x, boss.y);
             
@@ -1609,6 +1997,61 @@
             ctx.fillStyle = '#FF0000';
             ctx.fillRect(boss.x - 38, boss.y - boss.height / 2 - 18, 76 * Math.max(0, boss.health / boss.maxHealth), 6);
             
+            ctx.restore();
+        }
+
+        function drawAuroraBossSprite() {
+            ctx.save();
+            ctx.translate(boss.x, boss.y);
+            const pulse = 0.9 + Math.sin(boss.pulse) * 0.1;
+            const gradient = ctx.createRadialGradient(0, 0, 10, 0, 0, boss.radius * pulse);
+            gradient.addColorStop(0, 'rgba(255,255,255,0.9)');
+            gradient.addColorStop(0.4, 'rgba(126,255,212,0.8)');
+            gradient.addColorStop(0.7, 'rgba(94,241,255,0.6)');
+            gradient.addColorStop(1, 'rgba(72,61,139,0.2)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, boss.radius * pulse, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#b9f2ff';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, boss.radius * 0.7, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Eyes
+            ctx.fillStyle = '#0b1220';
+            ctx.beginPath();
+            ctx.ellipse(-20, -10, 8, 18, 0.3, 0, Math.PI * 2);
+            ctx.ellipse(20, -10, 8, 18, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mouth beam
+            ctx.strokeStyle = '#7fffd4';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(-25, 20);
+            ctx.quadraticCurveTo(0, 35 + Math.sin(boss.pulse) * 5, 25, 20);
+            ctx.stroke();
+            
+            ctx.restore();
+            
+            // Health bar & text
+            ctx.save();
+            ctx.fillStyle = '#0b1220';
+            ctx.fillRect(boss.x - 60, boss.y - boss.radius - 30, 120, 12);
+            ctx.fillStyle = '#7fffd4';
+            const healthPercent = Math.max(0, boss.health / boss.maxHealth);
+            ctx.fillRect(boss.x - 58, boss.y - boss.radius - 28, 116 * healthPercent, 8);
+            
+            if (boss.graceTimer > 0) {
+                ctx.fillStyle = '#FFD700';
+                ctx.font = '18px Fraunces';
+                ctx.textAlign = 'center';
+                const secondsLeft = Math.ceil(boss.graceTimer / 60);
+                ctx.fillText(`Aurora charging... ${secondsLeft}s`, boss.x, boss.y - boss.radius - 50);
+            }
             ctx.restore();
         }
 
@@ -1772,10 +2215,123 @@
                     ctx.moveTo(5, -5);
                     ctx.lineTo(5, barrier.height / 2 - 10);
                     ctx.stroke();
+                } else if (barrier.type === 'bunker') {
+                    ctx.fillStyle = '#4c5c68';
+                    ctx.fillRect(-barrier.width / 2, -barrier.height / 2, barrier.width, barrier.height);
+                    ctx.fillStyle = '#2f3941';
+                    ctx.fillRect(-barrier.width / 2 + 10, -barrier.height / 2 + 10, barrier.width - 20, barrier.height - 20);
+                    ctx.fillStyle = '#b0c4de';
+                    ctx.beginPath();
+                    ctx.arc(0, -barrier.height / 2 + 10, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (barrier.type === 'auroraTree') {
+                    const gradient = ctx.createLinearGradient(0, -barrier.height / 2, 0, barrier.height / 2);
+                    gradient.addColorStop(0, '#5ef1ff');
+                    gradient.addColorStop(1, '#5ef179');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -barrier.height / 2);
+                    ctx.lineTo(-barrier.width / 2, barrier.height / 2);
+                    ctx.lineTo(barrier.width / 2, barrier.height / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.fillStyle = '#2a3b4f';
+                    ctx.fillRect(-8, barrier.height / 2, 16, 30);
+                } else if (barrier.type === 'iceWall') {
+                    const iceGradient = ctx.createLinearGradient(0, -barrier.height / 2, 0, barrier.height / 2);
+                    iceGradient.addColorStop(0, '#c8f3ff');
+                    iceGradient.addColorStop(1, '#5ed0ff');
+                    ctx.fillStyle = iceGradient;
+                    ctx.fillRect(-barrier.width / 2, -barrier.height / 2, barrier.width, barrier.height);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-barrier.width / 2, -barrier.height / 2, barrier.width, barrier.height);
                 }
                 
                 ctx.restore();
             });
+        }
+
+        function drawBomber() {
+            if (!bomber) return;
+            ctx.save();
+            ctx.translate(bomber.x, bomber.y);
+            ctx.fillStyle = '#2b3e4f';
+            ctx.beginPath();
+            ctx.moveTo(-bomber.width / 2, bomber.height / 2);
+            ctx.lineTo(0, -bomber.height / 2);
+            ctx.lineTo(bomber.width / 2, bomber.height / 2);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = '#1b2a35';
+            ctx.fillRect(-20, -10, 40, 20);
+            
+            const glow = 0.5 + Math.sin(bomber.stealthPulse) * 0.4;
+            ctx.strokeStyle = `rgba(173,216,230,${glow})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, bomber.width / 2, Math.PI, 0);
+            ctx.stroke();
+            ctx.restore();
+
+            // Status text
+            ctx.save();
+            ctx.fillStyle = '#DAA520';
+            ctx.font = '16px Fraunces';
+            ctx.textAlign = 'center';
+            if (bomber.graceTimer > 0) {
+                ctx.fillText('Stealth bomber incoming...', bomber.x, bomber.y - 60);
+            } else if (bomber.isReloading) {
+                const secondsLeft = Math.ceil((bomber.reloadFrames - bomber.reloadTimer) / 60);
+                ctx.fillText(`Reloading bomb bay: ${secondsLeft}s`, bomber.x, bomber.y - 60);
+            } else if (!bomber.activeBomb) {
+                ctx.fillText('Bomb bay ready!', bomber.x, bomber.y - 60);
+            }
+            ctx.restore();
+        }
+
+        function drawBomberBombs() {
+            bomberBombs.forEach(bomb => {
+                ctx.save();
+                ctx.translate(bomb.x, bomb.y);
+                ctx.fillStyle = '#444';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 15, 25, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#888';
+                ctx.beginPath();
+                ctx.moveTo(-5, -15);
+                ctx.lineTo(-5, 15);
+                ctx.moveTo(5, -15);
+                ctx.lineTo(5, 15);
+                ctx.stroke();
+                ctx.restore();
+                
+                if (!bomb.exploded) {
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(255,69,0,0.2)';
+                    ctx.setLineDash([6, 10]);
+                    ctx.beginPath();
+                    ctx.arc(bomb.x, bomb.y, bomb.explosionRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            });
+        }
+
+        function drawAuroraWaves() {
+            auroraWaves.forEach(wave => {
+                ctx.save();
+                ctx.strokeStyle = `rgba(126,255,212,${wave.alpha})`;
+                ctx.lineWidth = 4;
+                ctx.setLineDash([8, 12]);
+                ctx.beginPath();
+                ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            });
+            ctx.setLineDash([]);
         }
 
         function drawProjectiles() {
@@ -1783,11 +2339,19 @@
                 ctx.save();
                 ctx.translate(proj.x, proj.y);
                 
-                if (proj.isHunter) {
+                if (proj.type === 'bullet' || proj.isHunter) {
                     // Bullet
                     ctx.fillStyle = '#333';
                     ctx.beginPath();
                     ctx.ellipse(0, 0, proj.size, proj.size / 2, Math.atan2(proj.vy, proj.vx), 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (proj.type === 'aurora') {
+                    const gradient = ctx.createRadialGradient(0, 0, 2, 0, 0, proj.size);
+                    gradient.addColorStop(0, proj.color || '#7FFFD4');
+                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, proj.size, 0, Math.PI * 2);
                     ctx.fill();
                 } else {
                     // Pie slice projectile
@@ -1822,9 +2386,18 @@
             drawBackground();
             
             if (gameState === 'playing' || gameState === 'boss') {
+                if (currentLevel === 4 && bomber) {
+                    drawBomber();
+                }
                 drawBarriers(); // Draw barriers behind other elements
                 apples.forEach(drawApple);
+                if (currentLevel === 4) {
+                    drawBomberBombs();
+                }
                 drawProjectiles();
+                if (boss && boss.type === BOSS_TYPES.AURORA) {
+                    drawAuroraWaves();
+                }
                 drawPeckIndicator(); // Draw peck range indicator behind turkey
                 drawTurkey();
                 if (boss) drawBoss();

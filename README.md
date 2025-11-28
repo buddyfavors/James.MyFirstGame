@@ -40,6 +40,12 @@ You've escaped the barn! Run through the beautiful autumn fields, collecting app
 ### Level 3: Hunter Hunt Down 🎯
 The most dangerous level! A hunter is tracking you through the dark forest. Eat apples to level up while dodging bullets and avoiding capture!
 
+### Level 4: Stealth Bomber Siege ✈️
+A cloaked B-2 bomber patrols the skies and drops a single mega bomb every 20 seconds. Duck behind makeshift bunkers and survive three bombing runs to advance.
+
+### Level 5: Northern Lights Siege 🌌
+The final boss is a massive northern light monster that fires aurora orbs. When it arrives, glowing evergreens spawn so you can hide while it charges. Pineapples replace apples in this phase—use them (and your peck attack) to chip away at the monster’s health and survive the night!
+
 ## ✨ Features
 
 - **Big-mouthed turkey** character with animated chomping
