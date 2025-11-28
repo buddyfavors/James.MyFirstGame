@@ -530,7 +530,7 @@
         <div class="touch-indicator" id="touchIndicator"></div>
         
         <div class="ui-overlay">
-            <div class="level-display" id="levelDisplay">Level 1: Barn Turkey Barn</div>
+            <div class="level-display" id="levelDisplay">Level 1: Barn Turkey</div>
             <div class="score-display"><span id="scoreIcon" aria-hidden="true">🍎</span> <span id="scoreDisplay">0</span></div>
         </div>
         
@@ -565,8 +565,8 @@
         <div class="level-up-screen hidden" id="levelUpScreen">
             <div class="turkey-emoji">🦃</div>
             <h1>Level Up!</h1>
-            <p class="level-name" id="newLevelName">Turkey Run</p>
-            <p class="instructions" id="levelDescription">You've escaped the barn! Now run through the fields!</p>
+            <p class="level-name" id="newLevelName">Corn Maze</p>
+            <p class="instructions" id="levelDescription">The stalks are alive! Weave the maze and harvest glowing cobs.</p>
             <p class="instructions" id="levelCountdown" aria-live="polite" style="display: none;">Press SPACE or wait 10s for the next level.</p>
             <button class="btn" onclick="continueGame()">Continue</button>
         </div>
@@ -648,6 +648,18 @@
             PUMPKIN: 'pumpkinPie',
             AURORA: 'auroraSpirit'
         };
+        const LEVEL_IDS = Object.freeze({
+            BARN_TURKEY: 1,
+            CORN_MAZE: 2,
+            PUMPKIN_PIE_BOSS: 3,
+            BARN_ESCAPE: 4,
+            HUNTER_SIEGE: 5,
+            WOOD_ESCAPE: 6,
+            STEALTH_BOMBER: 7,
+            SPACE_ESCAPE: 8,
+            NORTHERN_LIGHTS_BOSS: 9,
+            PARADE: 10
+        });
         const CORN_MAZE_SPEED_MODIFIER = 0.65;
         const AURORA_ATTACK_WINDOW_FRAMES = 360;
         const AURORA_RECHARGE_FRAMES = 10 * 60;
@@ -678,13 +690,16 @@
 
         // Level definitions
         const levels = {
-            1: { name: 'Barn Turkey Barn', xpNeeded: 10, bgColor: '#8B4513', description: 'Eat apples in the cozy barn!' },
-            2: { name: 'Turkey Run', xpNeeded: 15, bgColor: '#228B22', description: 'Run through the autumn fields!' },
-            3: { name: 'Hunter Hunt Down', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Hide behind barriers to survive! The hunter is waking up...' },
-            4: { name: 'Stealth Bomber Siege', xpNeeded: 3, bgColor: '#0f1a2b', description: 'B-2 bomber overhead! Survive 3 bombing runs.' },
-            5: { name: 'Northern Lights Siege', xpNeeded: 1, bgColor: '#082137', description: 'Aurora beast attacks! Pineapples fuel your survival.' },
-            6: { name: 'Corn Maze Migration', xpNeeded: 14, bgColor: '#6b3e12', description: 'Navigate a shifting corn maze and harvest cobs for guidance!' },
-            7: { name: 'Parade Float Builder', xpNeeded: 6, bgColor: '#320b28', description: 'Collect float parts and assemble the victory parade!' }
+            [LEVEL_IDS.BARN_TURKEY]: { name: 'Barn Turkey', xpNeeded: 10, bgColor: '#8B4513', description: 'Eat apples in the cozy barn!' },
+            [LEVEL_IDS.CORN_MAZE]: { name: 'Corn Maze', xpNeeded: 16, bgColor: '#6b3e12', description: 'Weave through a living corn labyrinth and harvest glowing cobs.' },
+            [LEVEL_IDS.PUMPKIN_PIE_BOSS]: { name: 'Pumpkin Pie Boss', xpNeeded: 0, bgColor: '#5D3A1A', description: 'Face the pumpkin pie boss and gobble your way to freedom!' },
+            [LEVEL_IDS.BARN_ESCAPE]: { name: 'Barn Escape', xpNeeded: 18, bgColor: '#228B22', description: 'Sprint across the barnyard fields and stay ahead of the farmers.' },
+            [LEVEL_IDS.HUNTER_SIEGE]: { name: 'Hunter Boss', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Hide behind hay bales and rocks while the hunter reloads.' },
+            [LEVEL_IDS.WOOD_ESCAPE]: { name: 'Wood Escape', xpNeeded: 18, bgColor: '#1f2a1c', description: 'Dash through the dark woods, slipping between towering trunks.' },
+            [LEVEL_IDS.STEALTH_BOMBER]: { name: 'Stealth Bomber Boss', xpNeeded: 3, bgColor: '#0f1a2b', description: 'The runway is exposed. Survive three bombing runs.' },
+            [LEVEL_IDS.SPACE_ESCAPE]: { name: 'Space Escape', xpNeeded: 20, bgColor: '#040c2c', description: 'Launch into the stars atop floating hay satellites and dodge debris.' },
+            [LEVEL_IDS.NORTHERN_LIGHTS_BOSS]: { name: 'Northern Lights Boss', xpNeeded: 1, bgColor: '#082137', description: 'The aurora beast awakens. Pineapples fuel your survival.' },
+            [LEVEL_IDS.PARADE]: { name: 'Parade', xpNeeded: 6, bgColor: '#320b28', description: 'Collect float parts and assemble the victory parade!' }
         };
         const MAX_LEVEL = Object.keys(levels).length;
 
@@ -718,7 +733,7 @@
         };
 
         function applyTurkeySizeForLevel(levelOverride = currentLevel) {
-            const preset = levelOverride === 6 ? TURKEY_SIZE_PRESETS.maze : TURKEY_SIZE_PRESETS.default;
+            const preset = levelOverride === LEVEL_IDS.CORN_MAZE ? TURKEY_SIZE_PRESETS.maze : TURKEY_SIZE_PRESETS.default;
             turkey.width = preset.width;
             turkey.height = preset.height;
         }
@@ -726,7 +741,7 @@
         function getTurkeyVerticalBounds() {
             const minY = turkey.height / 2;
             const maxY = BASE_HEIGHT - turkey.height / 2 - FLOOR_PADDING;
-            if (currentLevel === 4 && gameState === 'playing') {
+            if (currentLevel === LEVEL_IDS.STEALTH_BOMBER && gameState === 'playing') {
                 const groundTop = Math.max(minY, BASE_HEIGHT - BOMBER_GROUND_BAND_HEIGHT);
                 return { minY: groundTop, maxY };
             }
@@ -1015,7 +1030,7 @@
                 hunter.patrolBounds = getHunterPatrolBounds();
             }
 
-            if (currentLevel === 5 || (boss && boss.type === BOSS_TYPES.AURORA) || nextBossType === BOSS_TYPES.AURORA) {
+            if (currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS || (boss && boss.type === BOSS_TYPES.AURORA) || nextBossType === BOSS_TYPES.AURORA) {
                 ensureAuroraAmbience(true);
             }
         }
@@ -1140,13 +1155,14 @@
             turkey.y = 400;
             applyTurkeySizeForLevel();
             
-            const shouldSpawnCollectibles = currentLevel !== 5;
+            const isBossLevel = currentLevel === LEVEL_IDS.PUMPKIN_PIE_BOSS || currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS;
+            const shouldSpawnCollectibles = !isBossLevel;
             let initialCollectibles = 5;
-            if (currentLevel === 4) {
+            if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
                 initialCollectibles = 6;
-            } else if (currentLevel === 6) {
+            } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
                 initialCollectibles = 8;
-            } else if (currentLevel === 7) {
+            } else if (currentLevel === LEVEL_IDS.PARADE) {
                 initialCollectibles = 4;
             }
             if (shouldSpawnCollectibles) {
@@ -1155,21 +1171,23 @@
                 }
             }
 
-            if (currentLevel === 3) {
+            if (currentLevel === LEVEL_IDS.PUMPKIN_PIE_BOSS) {
+                queueBossFight(BOSS_TYPES.PUMPKIN);
+            } else if (currentLevel === LEVEL_IDS.HUNTER_SIEGE) {
                 initHunterEncounter();
-            } else if (currentLevel === 4) {
-                spawnBarriersForLevel(4);
+            } else if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
+                spawnBarriersForLevel(LEVEL_IDS.STEALTH_BOMBER);
                 initBomberLevel();
                 placeTurkeyOnGroundBand();
-            } else if (currentLevel === 5) {
-                spawnBarriersForLevel(5);
+            } else if (currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS) {
+                spawnBarriersForLevel(LEVEL_IDS.NORTHERN_LIGHTS_BOSS);
                 queueBossFight(BOSS_TYPES.AURORA);
                 ensureAuroraAmbience(true);
-            } else if (currentLevel === 6) {
+            } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
                 spawnCornMazeLevel();
                 turkey.x = BASE_WIDTH / 2;
                 turkey.y = BASE_HEIGHT - 120;
-            } else if (currentLevel === 7) {
+            } else if (currentLevel === LEVEL_IDS.PARADE) {
                 spawnParadeWorkshop();
                 initParadeFloatBuilder();
             }
@@ -1195,7 +1213,7 @@
                 patrolBounds: getHunterPatrolBounds()
             };
             
-            spawnBarriersForLevel(3);
+            spawnBarriersForLevel(LEVEL_IDS.HUNTER_SIEGE);
             
             const corners = [
                 { x: 80, y: 100 },
@@ -1249,7 +1267,7 @@
 
         function spawnBarriersForLevel(level) {
             barriers = [];
-            if (level === 3) {
+            if (level === LEVEL_IDS.HUNTER_SIEGE) {
                 const hayColumns = [0.18, 0.5, 0.82];
                 const hayRows = [0.32, 0.68];
                 hayRows.forEach(rowRatio => {
@@ -1280,7 +1298,7 @@
                     });
                 });
 
-            } else if (level === 4) {
+            } else if (level === LEVEL_IDS.STEALTH_BOMBER) {
                 const coverBandTop = BASE_HEIGHT - BOMBER_GROUND_BAND_HEIGHT + 20;
                 const hayRowY = coverBandTop + 30;
                 const hayColumns = [0.18, 0.38, 0.58, 0.78];
@@ -1306,7 +1324,7 @@
                     });
                 });
 
-            } else if (level === 5) {
+            } else if (level === LEVEL_IDS.NORTHERN_LIGHTS_BOSS) {
                 // glowing pine obstacles
                 const crystalRings = [
                     { x: BASE_WIDTH / 2 - 180, y: BASE_HEIGHT / 2, type: 'auroraTree' },
@@ -1397,7 +1415,7 @@
         function initParadeFloatBuilder() {
             paradeFloat = {
                 partsBuilt: 0,
-                partsRequired: levels[7].xpNeeded,
+                partsRequired: levels[LEVEL_IDS.PARADE].xpNeeded,
                 stage: 0,
                 stageLabels: ['Chassis', 'Balloon Rigging', 'Light Show', 'Music Stack', 'Final Touches'],
                 status: 'Collect float parts scattered across the runway!'
@@ -1526,7 +1544,7 @@
         }
 
         function updateBomber() {
-            if (!bomber || currentLevel !== 4 || gameState !== 'playing') return;
+            if (!bomber || currentLevel !== LEVEL_IDS.STEALTH_BOMBER || gameState !== 'playing') return;
             
             bomber.stealthPulse += 0.02;
             bomber.x += bomber.speed * bomber.direction;
@@ -1572,7 +1590,7 @@
         }
 
         function updateBomberBombs() {
-            if (!bomber || currentLevel !== 4) return;
+            if (!bomber || currentLevel !== LEVEL_IDS.STEALTH_BOMBER) return;
             for (let i = bomberBombs.length - 1; i >= 0; i--) {
                 const bomb = bomberBombs[i];
                 if (!bomb.exploded) {
@@ -1663,7 +1681,7 @@
         }
 
         function getAppleSpawnRange() {
-            if (currentLevel === 4) {
+            if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
                 const { minY, maxY } = getTurkeyVerticalBounds();
                 const padding = 20;
                 const groundMin = Math.max(minY + padding, BASE_HEIGHT - BOMBER_GROUND_BAND_HEIGHT + 10);
@@ -1674,7 +1692,7 @@
         }
 
         function getAppleCapForLevel() {
-            if (currentLevel === 4) {
+            if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
                 return 3;
             }
             return Number.POSITIVE_INFINITY;
@@ -1688,7 +1706,7 @@
             let attempts = 0;
             const maxAttempts = 25;
             while (attempts < maxAttempts) {
-                const size = currentLevel === 7 ? 32 : 25;
+                const size = currentLevel === LEVEL_IDS.PARADE ? 32 : 25;
                 const { minY: appleMinY, maxY: appleMaxY } = getAppleSpawnRange();
                 const yRange = Math.max(1, appleMaxY - appleMinY);
                 const candidate = {
@@ -1938,16 +1956,16 @@
             if (gameState === 'win' || !levels[currentLevel]) return;
             
             let scoreIcon = '🍎';
-            if (currentLevel === 5) {
+            if (currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS) {
                 scoreIcon = '🍍';
-            } else if (currentLevel === 6) {
+            } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
                 scoreIcon = '🌽';
-            } else if (currentLevel === 7) {
+            } else if (currentLevel === LEVEL_IDS.PARADE) {
                 scoreIcon = '🎪';
             }
             scoreIconEl.textContent = scoreIcon;
             let levelLabel = `Level ${currentLevel}: ${levels[currentLevel].name}`;
-            if (currentLevel === 7 && paradeFloat) {
+            if (currentLevel === LEVEL_IDS.PARADE && paradeFloat) {
                 levelLabel += ` · ${paradeFloat.stageLabels[paradeFloat.stage]}`;
             }
             document.getElementById('levelDisplay').textContent = levelLabel;
@@ -1957,17 +1975,17 @@
             let needed = xpNeeded;
             let label = 'XP';
 
-            if (currentLevel === 4) {
+            if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
                 filled = bomberRoundsSurvived;
                 needed = (bomber && bomber.roundsToSurvive) || xpNeeded;
                 label = 'Rounds Survived';
-            } else if (currentLevel === 5 && boss && boss.type === BOSS_TYPES.AURORA) {
+            } else if (currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS && boss && boss.type === BOSS_TYPES.AURORA) {
                 filled = Math.max(0, boss.health);
                 needed = boss.maxHealth;
                 label = 'Boss HP';
-            } else if (currentLevel === 6) {
+            } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
                 label = 'Maze XP';
-            } else if (currentLevel === 7 && paradeFloat) {
+            } else if (currentLevel === LEVEL_IDS.PARADE && paradeFloat) {
                 filled = paradeFloat.partsBuilt;
                 needed = paradeFloat.partsRequired;
                 label = 'Float Parts';
@@ -2005,7 +2023,7 @@
             let moveDy = 0;
             let speedMultiplier = 1;
             const cranberryBoost = leftoverBuffs.cranberry.activeTimer > 0 ? LEFTOVER_CONFIG.cranberry.speedBoost : 1;
-            const isCornMazeLevel = currentLevel === 6;
+            const isCornMazeLevel = currentLevel === LEVEL_IDS.CORN_MAZE;
             const levelSpeedModifier = isCornMazeLevel ? CORN_MAZE_SPEED_MODIFIER : 1;
             
             const keyLeft = keys['arrowleft'] || keys['a'] || keys['ArrowLeft'];
@@ -2060,7 +2078,7 @@
                 turkey.legSwingAmount = Math.max(0, turkey.legSwingAmount - 0.05);
             }
 
-            if (currentLevel === 5 || (boss && boss.type === BOSS_TYPES.AURORA) || nextBossType === BOSS_TYPES.AURORA) {
+            if (currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS || (boss && boss.type === BOSS_TYPES.AURORA) || nextBossType === BOSS_TYPES.AURORA) {
                 updateRoamingAuroras();
             }
 
@@ -2085,7 +2103,7 @@
                 const apple = apples[i];
                 const dist = Math.hypot(turkey.x - apple.x, turkey.y - apple.y);
                 if (dist < turkey.width / 2 + apple.size / 2) {
-                    const isPineappleRound = currentLevel === 5;
+                    const isPineappleRound = currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS;
                     const fruitColor = isPineappleRound ? '#FFA500' : '#FF0000';
                     const leafColor = isPineappleRound ? '#2E8B57' : '#00FF00';
                     spawnParticles(apple.x, apple.y, fruitColor, 8);
@@ -2104,20 +2122,16 @@
                                 levelUp();
                             }
                         }
-                    } else if (currentLevel === 7 && paradeFloat && gameState !== 'boss') {
+                    } else if (currentLevel === LEVEL_IDS.PARADE && paradeFloat && gameState !== 'boss') {
                         incrementParadeFloat();
                         xp = paradeFloat.partsBuilt;
                         if (xp >= xpNeeded) {
                             levelUp();
                         }
-                    } else if (currentLevel !== 4 && gameState !== 'boss') {
+                    } else if (currentLevel !== LEVEL_IDS.STEALTH_BOMBER && gameState !== 'boss') {
                         xp++;
                         if (xp >= xpNeeded) {
-                            if (currentLevel === 1) {
-                                queueBossFight(BOSS_TYPES.PUMPKIN);
-                            } else {
-                                levelUp();
-                            }
+                            levelUp();
                         }
                     }
                     
@@ -2178,7 +2192,7 @@
 
             }
 
-            if (currentLevel === 4 && gameState === 'playing') {
+            if (currentLevel === LEVEL_IDS.STEALTH_BOMBER && gameState === 'playing') {
                 updateBomber();
                 updateBomberBombs();
             }
@@ -2475,12 +2489,17 @@
 
         function drawBackground() {
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            const isPumpkinBossField = boss && boss.type === BOSS_TYPES.PUMPKIN && currentLevel === 1;
+            const isPumpkinBossField = boss && boss.type === BOSS_TYPES.PUMPKIN;
             const isAuroraBattle = boss && boss.type === BOSS_TYPES.AURORA;
-            const backdropLevel = isAuroraBattle ? 5 : (isPumpkinBossField ? 2 : currentLevel);
+            let backdropLevel = currentLevel;
+            if (isAuroraBattle) {
+                backdropLevel = LEVEL_IDS.NORTHERN_LIGHTS_BOSS;
+            } else if (isPumpkinBossField) {
+                backdropLevel = LEVEL_IDS.BARN_ESCAPE;
+            }
             
             switch (backdropLevel) {
-                case 1: {
+                case LEVEL_IDS.BARN_TURKEY: {
                     gradient.addColorStop(0, '#8B4513');
                     gradient.addColorStop(1, '#5D3A1A');
                     ctx.fillStyle = gradient;
@@ -2515,7 +2534,8 @@
                     }
                     break;
                 }
-                case 2: {
+                case LEVEL_IDS.BARN_ESCAPE:
+                case LEVEL_IDS.PUMPKIN_PIE_BOSS: {
                     gradient.addColorStop(0, '#87CEEB');
                     gradient.addColorStop(0.6, '#FDB347');
                     gradient.addColorStop(1, '#228B22');
@@ -2539,7 +2559,53 @@
                     }
                     break;
                 }
-                case 4: {
+                case LEVEL_IDS.HUNTER_SIEGE: {
+                    gradient.addColorStop(0, '#1d1c2c');
+                    gradient.addColorStop(0.7, '#0f1a1c');
+                    gradient.addColorStop(1, '#08100f');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = '#162926';
+                    const treeCount = Math.max(6, Math.ceil(canvas.width / 140));
+                    for (let i = 0; i < treeCount; i++) {
+                        const baseX = (i * 137 + 50) % (canvas.width + 80) - 40;
+                        ctx.beginPath();
+                        ctx.moveTo(baseX, canvas.height);
+                        ctx.lineTo(baseX + 25, canvas.height - 180 - (i % 3) * 20);
+                        ctx.lineTo(baseX + 50, canvas.height);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    
+                    ctx.fillStyle = '#243734';
+                    ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
+                    break;
+                }
+                case LEVEL_IDS.WOOD_ESCAPE: {
+                    gradient.addColorStop(0, '#120c1f');
+                    gradient.addColorStop(0.4, '#1c1a2e');
+                    gradient.addColorStop(1, '#1a2a1a');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = '#0b3d2c55';
+                    for (let i = 0; i < canvas.width; i += 50) {
+                        ctx.beginPath();
+                        ctx.moveTo(i, canvas.height);
+                        ctx.lineTo(i + 25, canvas.height - 220 - Math.sin(i * 0.3) * 20);
+                        ctx.lineTo(i + 40, canvas.height);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    
+                    ctx.fillStyle = '#27402c';
+                    ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+                    ctx.fillStyle = '#152214';
+                    ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+                    break;
+                }
+                case LEVEL_IDS.STEALTH_BOMBER: {
                     gradient.addColorStop(0, '#030711');
                     gradient.addColorStop(1, '#0f1a2b');
                     ctx.fillStyle = gradient;
@@ -2561,7 +2627,31 @@
                     ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
                     break;
                 }
-                case 5: {
+                case LEVEL_IDS.SPACE_ESCAPE: {
+                    gradient.addColorStop(0, '#050714');
+                    gradient.addColorStop(0.4, '#040c2c');
+                    gradient.addColorStop(1, '#01030a');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = '#ffffff33';
+                    const starTotal = Math.max(120, Math.ceil(canvas.width / 5));
+                    for (let i = 0; i < starTotal; i++) {
+                        const r = (i % 7) * 0.2 + 0.4;
+                        ctx.beginPath();
+                        ctx.arc((i * 47) % canvas.width, (i * 91) % canvas.height, r, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    ctx.fillStyle = '#2f87ff44';
+                    ctx.beginPath();
+                    ctx.ellipse(canvas.width * 0.7, canvas.height * 0.3, 140, 40, 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#1f1135';
+                    ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+                    break;
+                }
+                case LEVEL_IDS.NORTHERN_LIGHTS_BOSS: {
                     gradient.addColorStop(0, '#05030f');
                     gradient.addColorStop(0.5, '#112144');
                     gradient.addColorStop(1, '#04121f');
@@ -2587,7 +2677,7 @@
                     ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
                     break;
                 }
-                case 6: {
+                case LEVEL_IDS.CORN_MAZE: {
                     gradient.addColorStop(0, '#1b1206');
                     gradient.addColorStop(0.4, '#3b240b');
                     gradient.addColorStop(1, '#1f1506');
@@ -2609,7 +2699,7 @@
                     ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
                     break;
                 }
-                case 7: {
+                case LEVEL_IDS.PARADE: {
                     gradient.addColorStop(0, '#1a0633');
                     gradient.addColorStop(0.5, '#2f0d2a');
                     gradient.addColorStop(1, '#000000');
@@ -2815,7 +2905,7 @@
             ctx.save();
             ctx.translate(apple.x, apple.y + Math.sin(Date.now() / 300 + apple.bobOffset) * 5);
             
-            if (currentLevel === 5) {
+            if (currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS) {
                 // Pineapple body
                 ctx.fillStyle = '#FFB347';
                 ctx.beginPath();
@@ -2839,7 +2929,7 @@
                 }
                 ctx.restore();
                 return;
-            } else if (currentLevel === 6) {
+            } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
                 ctx.fillStyle = '#f2c94c';
                 ctx.beginPath();
                 ctx.ellipse(0, 0, apple.size / 2.4, apple.size / 1.2, 0.2, 0, Math.PI * 2);
@@ -2861,7 +2951,7 @@
                 ctx.fill();
                 ctx.restore();
                 return;
-            } else if (currentLevel === 7) {
+            } else if (currentLevel === LEVEL_IDS.PARADE) {
                 ctx.fillStyle = '#ff8fb1';
                 ctx.fillRect(-apple.size / 2, -apple.size / 2, apple.size, apple.size);
                 ctx.strokeStyle = '#ffd700';
@@ -3747,7 +3837,7 @@
             if (gameState === 'playing' || gameState === 'boss') {
                 drawBarriers(); // Draw barriers behind other elements
                 apples.forEach(drawApple);
-                if (currentLevel === 4) {
+                if (currentLevel === LEVEL_IDS.STEALTH_BOMBER) {
                     drawBomberBombs();
                 }
                 drawProjectiles();
@@ -3761,7 +3851,7 @@
                 drawTurkey();
                 if (boss) drawBoss();
                 if (hunter) drawHunter();
-                if (currentLevel === 4 && bomber) {
+                if (currentLevel === LEVEL_IDS.STEALTH_BOMBER && bomber) {
                     drawBomber();
                 }
                 drawParticles();
