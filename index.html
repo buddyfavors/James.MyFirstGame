@@ -644,6 +644,7 @@
         const TEN_SECOND_FRAMES = 10 * 60;
         const HUNTER_RELOAD_FRAMES = TEN_SECOND_FRAMES;
         const BOMBER_RELOAD_FRAMES = TEN_SECOND_FRAMES;
+        const PUMPKIN_ATTACK_INTERVAL_FRAMES = 120; // ~2 seconds between pie throws
 
         const BOSS_TYPES = {
             PUMPKIN: 'pumpkinPie',
@@ -2255,7 +2256,7 @@
             }
 
             boss.attackTimer++;
-            if (boss.attackTimer > 60) {
+            if (boss.attackTimer >= PUMPKIN_ATTACK_INTERVAL_FRAMES) {
                 boss.attackTimer = 0;
                 
                 const sliceAngle = (boss.shotsThrown % 8) * (Math.PI / 4);
