@@ -33,29 +33,35 @@ A fun browser-based game where you play as a hungry turkey trying to survive Tha
 
 ## 📖 Game Levels
 
-### Level 1: Barn Turkey Barn 🏠
-Start your journey in a cozy barn. Eat 10 apples to escape and face the first boss!
+### Level 1: Barn Turkey 🏠
+Start your journey in a cozy barn. Eat apples, dodge hay bales, and bulk up for the gauntlet ahead.
 
-### Boss Fight: Pumpkin Pie 🥧
-The dreaded Pumpkin Pie boss appears! Eat apples to damage it while dodging its pie slice attacks. Defeat it to advance!
+### Level 2: Corn Maze 🌽
+Weave through a living corn labyrinth. The stalks sway closed, so hug the glowing cobs, watch the shifting lanes, and keep moving.
 
-### Level 2: Turkey Run 🍂
-You've escaped the barn! Run through the beautiful autumn fields, collecting apples while enjoying the fall foliage.
+### Level 3: Pumpkin Pie Boss 🥧
+The dreaded Pumpkin Pie boss appears early! Eat apples to chip away at the crust, peck when you’re in range, and don’t stop dodging pie slices.
 
-### Level 3: Hunter Hunt Down 🎯
-The most dangerous level! A hunter is tracking you through the dark forest. Eat apples to level up while dodging bullets and avoiding capture!
+### Level 4: Barn Escape 🍂
+Bust out of the barnyard and sprint across the open fields. Leaves swirl, farmers shout, and apples are everywhere—speed is your best friend.
 
-### Level 4: Stealth Bomber Siege ✈️
-A cloaked B-2 bomber patrols the skies and drops a single mega bomb every 20 seconds. There’s no longer any cover along the runway, so keep moving and survive three bombing runs to advance.
+### Level 5: Hunter Boss 🎯
+A relentless hunter tracks you through the treeline. Use hay bales and rocks for cover, bait shots, and gather apples while the rifle reloads.
 
-### Level 5: Northern Lights Siege 🌌
-The final boss is a massive northern light monster that fires aurora orbs. It now spends 10 full seconds recharging before unleashing a screen-filling energy blast, so use the glowing evergreens and your speed boost to stay mobile. Pineapples replace apples in this phase—use them (and your peck attack) to chip away at the monster’s health and survive the night!
+### Level 6: Wood Escape 🌲
+The forest thickens into a shadowy wood. Lantern-lit trunks blur past, so thread tight gaps, snag floating fruit, and don’t let the darkness box you in.
 
-### Level 6: Corn Maze Migration 🌽
-After escaping the aurora beast, weave through a living corn labyrinth. The walls sway in the wind and block your path, so you’ll need to find the winding lane, harvest glowing cobs, and stay mobile.
+### Level 7: Stealth Bomber Boss ✈️
+A cloaked B-2 bomber patrols the skies and drops a massive bomb every 20 seconds. The runway is exposed—survive three bombing runs to advance.
 
-### Level 7: Parade Float Builder 🎪
-Cap off the journey on a moonlit parade runway. Collect float parts, bolt them onto the stage, and trigger confetti bursts while you assemble the turkey’s victory float before sunrise.
+### Level 8: Space Escape 🚀
+The turkey rockets into orbit on a parade float booster. Drift past hay satellites, dodge orbital debris, and gather zero-g apples before re-entry.
+
+### Level 9: Northern Lights Boss 🌌
+The aurora beast awakens. It hurls aurora orbs, unleashes mega blasts after recharging, and only pineapples fuel your counterattack. Stay mobile!
+
+### Level 10: Parade 🎪
+Cap off the journey on a moonlit parade runway. Collect float parts, bolt them onto the stage, and trigger confetti bursts as you assemble the victory float.
 
 ## ✨ Features
 

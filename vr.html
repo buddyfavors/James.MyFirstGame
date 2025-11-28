@@ -233,7 +233,7 @@
 <body>
     <!-- HUD -->
     <div class="hud" id="hud" style="display: none;">
-        <div class="hud-item level" id="levelDisplay">Level 1: Barn</div>
+        <div class="hud-item level" id="levelDisplay">Level 1: Barn Turkey</div>
         <div class="hud-item">🍎 <span id="scoreDisplay">0</span></div>
         <div class="xp-container">
             <div class="xp-bar" id="xpBar" style="width: 0%"></div>
@@ -256,9 +256,9 @@
         <p class="subtitle">A Thanksgiving Adventure in Virtual Reality</p>
         <div class="instructions">
             You're a hungry turkey with a BIG appetite!<br><br>
-            🍎 Collect floating apples to gain XP<br>
-            🥧 Defeat the Pumpkin Pie boss<br>
-            🏃 Survive the hunter in the final level!<br><br>
+            🍎 Collect floating apples (and pineapples) to gain XP<br>
+            🥧 Battle Pumpkin Pie in level 3 and the Northern Lights boss in level 9<br>
+            ✈️ Outrun hunters, stealth bombers, dark woods, and even space!<br><br>
             <strong>Desktop:</strong> WASD to move, Mouse to look, Space to peck<br>
             <strong>VR:</strong> Look to aim, Trigger/Grip to move, A/X to peck
         </div>
@@ -273,17 +273,17 @@
     <div class="overlay hidden" id="levelUpScreen">
         <div class="emoji">🦃</div>
         <h1>Level Up!</h1>
-        <p class="level-name" id="newLevelName">Turkey Run</p>
-        <p class="instructions" id="levelDescription">You've escaped the barn! Now run through the fields!</p>
+        <p class="level-name" id="newLevelName">Corn Maze</p>
+        <p class="instructions" id="levelDescription">The stalks are alive! Weave the maze and harvest glowing cobs.</p>
         <button class="btn" onclick="continueGame()">Continue</button>
     </div>
 
     <!-- Boss Screen -->
     <div class="overlay hidden" id="bossScreen">
-        <div class="emoji">🥧</div>
+        <div class="emoji" id="bossFightEmoji">🥧</div>
         <h1>Boss Fight!</h1>
-        <p class="level-name boss-name">Pumpkin Pie</p>
-        <p class="instructions">
+        <p class="level-name boss-name" id="bossFightName">Pumpkin Pie</p>
+        <p class="instructions" id="bossFightInstructions">
             The dreaded Pumpkin Pie appears!<br>
             🍎 Eat apples to damage it<br>
             👊 Get close and peck it!<br>
@@ -505,20 +505,44 @@
         let currentLevel = 1;
         let score = 0;
         let xp = 0;
-        let xpNeeded = 10;
+        let xpNeeded = levels[LEVEL_IDS.BARN_TURKEY].xpNeeded;
         let isVRMode = false;
 
         // Entity references
         let cameraRig, camera, boss, hunter, apples, projectiles;
         let sky, ground, barnEnv, fieldEnv, forestEnv, sunLight;
-        let beak, turkeyBody;
+        let beak, turkeyBody, pieFilling, bossHealthBar, bossFightEmojiEl, bossFightNameEl, bossFightInstructionsEl;
 
         // Game settings
+        const LEVEL_IDS = Object.freeze({
+            BARN_TURKEY: 1,
+            CORN_MAZE: 2,
+            PUMPKIN_PIE_BOSS: 3,
+            BARN_ESCAPE: 4,
+            HUNTER_SIEGE: 5,
+            WOOD_ESCAPE: 6,
+            STEALTH_BOMBER: 7,
+            SPACE_ESCAPE: 8,
+            NORTHERN_LIGHTS_BOSS: 9,
+            PARADE: 10
+        });
+        const BOSS_TYPES = Object.freeze({
+            PUMPKIN: 'pumpkin',
+            AURORA: 'aurora'
+        });
         const levels = {
-            1: { name: 'Barn Turkey Barn', xpNeeded: 10, description: 'Eat apples in the cozy barn!' },
-            2: { name: 'Turkey Run', xpNeeded: 15, description: 'Run through the autumn fields!' },
-            3: { name: 'Hunter Hunt Down', xpNeeded: 20, description: 'Hide behind barriers to survive! The hunter is waking up...' }
+            [LEVEL_IDS.BARN_TURKEY]: { name: 'Barn Turkey', xpNeeded: 8, description: 'Eat apples in the cozy barn!' },
+            [LEVEL_IDS.CORN_MAZE]: { name: 'Corn Maze', xpNeeded: 12, description: 'Weave through the shifting stalks and harvest glowing cobs.' },
+            [LEVEL_IDS.PUMPKIN_PIE_BOSS]: { name: 'Pumpkin Pie Boss', xpNeeded: 0, description: 'Face Pumpkin Pie and gobble your way to freedom!' },
+            [LEVEL_IDS.BARN_ESCAPE]: { name: 'Barn Escape', xpNeeded: 14, description: 'Sprint across autumn fields and stay ahead of the farmers.' },
+            [LEVEL_IDS.HUNTER_SIEGE]: { name: 'Hunter Boss', xpNeeded: 16, description: 'Duck behind cover while the hunter reloads.' },
+            [LEVEL_IDS.WOOD_ESCAPE]: { name: 'Wood Escape', xpNeeded: 14, description: 'Dash through lantern-lit woods without getting boxed in.' },
+            [LEVEL_IDS.STEALTH_BOMBER]: { name: 'Stealth Bomber Boss', xpNeeded: 3, description: 'Survive three bombing runs along the runway.' },
+            [LEVEL_IDS.SPACE_ESCAPE]: { name: 'Space Escape', xpNeeded: 16, description: 'Orbit hay satellites and dodge cosmic debris.' },
+            [LEVEL_IDS.NORTHERN_LIGHTS_BOSS]: { name: 'Northern Lights Boss', xpNeeded: 1, description: 'Pineapples power your fight against the aurora beast.' },
+            [LEVEL_IDS.PARADE]: { name: 'Parade', xpNeeded: 5, description: 'Collect float parts and ignite confetti.' }
         };
+        const MAX_LEVEL = Object.keys(levels).length;
 
         // Movement state
         const moveState = { forward: false, backward: false, left: false, right: false };
@@ -535,11 +559,13 @@
 
         // Boss state
         let bossState = {
+            type: BOSS_TYPES.PUMPKIN,
             health: 10,
             maxHealth: 10,
             direction: 1,
             attackTimer: 0
         };
+        let pendingBossType = null;
 
         // Hunter state
         let hunterState = {
@@ -590,6 +616,11 @@
             sunLight = document.getElementById('sunLight');
             beak = document.getElementById('beak');
             turkeyBody = document.getElementById('turkeyBody');
+            pieFilling = document.getElementById('pieFilling');
+            bossHealthBar = document.getElementById('bossHealthBar');
+            bossFightEmojiEl = document.getElementById('bossFightEmoji');
+            bossFightNameEl = document.getElementById('bossFightName');
+            bossFightInstructionsEl = document.getElementById('bossFightInstructions');
         }
 
         function setupControls() {
@@ -648,6 +679,7 @@
             }
 
             gameState = 'playing';
+            pendingBossType = null;
             resetLevel();
             gameLoop();
         }
@@ -661,7 +693,8 @@
         function startBossFight() {
             document.getElementById('bossScreen').classList.add('hidden');
             gameState = 'boss';
-            initBoss();
+            initBoss(pendingBossType || BOSS_TYPES.PUMPKIN);
+            pendingBossType = null;
         }
 
         function restartGame() {
@@ -671,6 +704,7 @@
             score = 0;
             xp = 0;
             gameState = 'playing';
+            pendingBossType = null;
             resetLevel();
         }
 
@@ -681,7 +715,8 @@
             
             // Reset XP
             xp = 0;
-            xpNeeded = levels[currentLevel].xpNeeded;
+            const levelConfig = levels[currentLevel] || { xpNeeded: 10 };
+            xpNeeded = levelConfig.xpNeeded;
 
             // Reset player position
             cameraRig.setAttribute('position', '0 1 5');
@@ -689,13 +724,23 @@
             // Setup environment based on level
             setupEnvironment();
 
-            // Spawn apples
-            for (let i = 0; i < 5; i++) {
-                spawnApple();
+            const isBossLevel = currentLevel === LEVEL_IDS.PUMPKIN_PIE_BOSS || currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS;
+            if (isBossLevel) {
+                pendingBossType = currentLevel === LEVEL_IDS.NORTHERN_LIGHTS_BOSS ? BOSS_TYPES.AURORA : BOSS_TYPES.PUMPKIN;
+                configureBossScreen(pendingBossType);
+                document.getElementById('bossScreen').classList.remove('hidden');
+                gameState = 'boss';
+            } else {
+                pendingBossType = null;
+                document.getElementById('bossScreen').classList.add('hidden');
+                gameState = 'playing';
+                for (let i = 0; i < 5; i++) {
+                    spawnApple();
+                }
             }
 
-            // Setup hunter for level 3
-            if (currentLevel === 3) {
+            // Setup hunter for level 5
+            if (currentLevel === LEVEL_IDS.HUNTER_SIEGE) {
                 hunter.setAttribute('visible', 'true');
                 hunter.setAttribute('position', '0 0 -5');
                 hunterState = {
@@ -714,59 +759,111 @@
         }
 
         function setupEnvironment() {
-            // Hide all environments first
             barnEnv.setAttribute('visible', 'false');
             fieldEnv.setAttribute('visible', 'false');
             forestEnv.setAttribute('visible', 'false');
 
-            if (currentLevel === 1 || gameState === 'boss') {
-                if (gameState === 'boss') {
-                    // Boss fight in field
-                    sky.setAttribute('color', '#87CEEB');
-                    ground.setAttribute('color', '#228B22');
-                    fieldEnv.setAttribute('visible', 'true');
-                    sunLight.setAttribute('color', '#FDB347');
-                    sunLight.setAttribute('intensity', '0.8');
-                } else {
-                    // Barn
-                    sky.setAttribute('color', '#5D3A1A');
-                    ground.setAttribute('color', '#8B4513');
-                    barnEnv.setAttribute('visible', 'true');
-                    sunLight.setAttribute('color', '#DAA520');
-                    sunLight.setAttribute('intensity', '0.4');
-                }
-            } else if (currentLevel === 2) {
-                // Autumn field
-                sky.setAttribute('color', '#87CEEB');
-                ground.setAttribute('color', '#228B22');
+            const activeBossType = pendingBossType || bossState.type || null;
+            const themedLevel = (gameState === 'boss' && activeBossType)
+                ? (activeBossType === BOSS_TYPES.AURORA ? LEVEL_IDS.NORTHERN_LIGHTS_BOSS : LEVEL_IDS.PUMPKIN_PIE_BOSS)
+                : currentLevel;
+
+            const showBarn = () => {
+                sky.setAttribute('color', '#5D3A1A');
+                ground.setAttribute('color', '#8B4513');
+                barnEnv.setAttribute('visible', 'true');
+                sunLight.setAttribute('color', '#DAA520');
+                sunLight.setAttribute('intensity', '0.4');
+            };
+            const showField = (skyColor, groundColor, lightColor = '#FDB347', lightIntensity = 0.8) => {
+                sky.setAttribute('color', skyColor);
+                ground.setAttribute('color', groundColor);
                 fieldEnv.setAttribute('visible', 'true');
-                sunLight.setAttribute('color', '#FDB347');
-                sunLight.setAttribute('intensity', '0.8');
-            } else if (currentLevel === 3) {
-                // Dark forest
-                sky.setAttribute('color', '#1a1a2e');
-                ground.setAttribute('color', '#2d4a3e');
+                sunLight.setAttribute('color', lightColor);
+                sunLight.setAttribute('intensity', lightIntensity);
+            };
+            const showForest = (skyColor, groundColor, lightColor = '#4a4a6a', lightIntensity = 0.3) => {
+                sky.setAttribute('color', skyColor);
+                ground.setAttribute('color', groundColor);
                 forestEnv.setAttribute('visible', 'true');
-                sunLight.setAttribute('color', '#4a4a6a');
-                sunLight.setAttribute('intensity', '0.3');
+                sunLight.setAttribute('color', lightColor);
+                sunLight.setAttribute('intensity', lightIntensity);
+            };
+
+            switch (themedLevel) {
+                case LEVEL_IDS.BARN_TURKEY:
+                    showBarn();
+                    break;
+                case LEVEL_IDS.CORN_MAZE:
+                case LEVEL_IDS.BARN_ESCAPE:
+                case LEVEL_IDS.PUMPKIN_PIE_BOSS:
+                    showField('#87CEEB', '#228B22');
+                    break;
+                case LEVEL_IDS.HUNTER_SIEGE:
+                    showForest('#1a1a2e', '#2d4a3e');
+                    break;
+                case LEVEL_IDS.WOOD_ESCAPE:
+                    showForest('#110d1f', '#1e2a20', '#233d38', 0.35);
+                    break;
+                case LEVEL_IDS.STEALTH_BOMBER:
+                    showField('#030711', '#101d2d', '#99c1ff', 0.35);
+                    break;
+                case LEVEL_IDS.SPACE_ESCAPE:
+                    barnEnv.setAttribute('visible', 'false');
+                    fieldEnv.setAttribute('visible', 'false');
+                    forestEnv.setAttribute('visible', 'false');
+                    sky.setAttribute('color', '#040c2c');
+                    ground.setAttribute('color', '#050714');
+                    sunLight.setAttribute('color', '#9ad5ff');
+                    sunLight.setAttribute('intensity', '0.2');
+                    break;
+                case LEVEL_IDS.NORTHERN_LIGHTS_BOSS:
+                    showField('#05030f', '#0b1d2c', '#7FFFD4', 0.5);
+                    break;
+                case LEVEL_IDS.PARADE:
+                    showField('#1a0633', '#320b28', '#ffd700', 0.9);
+                    break;
+                default:
+                    showField('#87CEEB', '#228B22');
             }
         }
 
-        function initBoss() {
+        function configureBossScreen(type = BOSS_TYPES.PUMPKIN) {
+            if (!bossFightNameEl) return;
+            if (type === BOSS_TYPES.AURORA) {
+                bossFightEmojiEl.textContent = '🌌';
+                bossFightNameEl.textContent = 'Northern Lights Boss';
+                bossFightInstructionsEl.innerHTML = 'The aurora beast awakens!<br>🍍 Pineapples fuel your attacks<br>⚡ Move constantly to dodge energy bursts<br>👊 Peck when you close the distance';
+            } else {
+                bossFightEmojiEl.textContent = '🥧';
+                bossFightNameEl.textContent = 'Pumpkin Pie Boss';
+                bossFightInstructionsEl.innerHTML = 'The dreaded Pumpkin Pie appears!<br>🍎 Eat apples to damage it<br>👊 Get close and peck it!<br>🦃 Or just <strong>EAT THE BOSS</strong> directly!';
+            }
+        }
+
+        function initBoss(type = BOSS_TYPES.PUMPKIN) {
             boss.setAttribute('visible', 'true');
             boss.setAttribute('position', '0 1.5 -8');
             bossState = {
-                health: 10,
-                maxHealth: 10,
+                type,
+                health: type === BOSS_TYPES.AURORA ? 14 : 10,
+                maxHealth: type === BOSS_TYPES.AURORA ? 14 : 10,
                 direction: 1,
                 attackTimer: 0
             };
+            if (pieFilling) {
+                pieFilling.setAttribute('color', type === BOSS_TYPES.AURORA ? '#7FFFD4' : '#FF7518');
+            }
+            if (bossHealthBar) {
+                bossHealthBar.setAttribute('color', type === BOSS_TYPES.AURORA ? '#7FFFD4' : '#FF0000');
+            }
 
             setupEnvironment();
             
             // Spawn fewer apples for boss fight
             apples.innerHTML = '';
-            for (let i = 0; i < 3; i++) {
+            const fruitDrops = type === BOSS_TYPES.AURORA ? 5 : 3;
+            for (let i = 0; i < fruitDrops; i++) {
                 spawnApple();
             }
         }
@@ -874,9 +971,9 @@
             
             document.getElementById('levelDisplay').textContent = `Level ${currentLevel}: ${levels[currentLevel].name}`;
             document.getElementById('scoreDisplay').textContent = score;
-            const xpPercent = (xp / xpNeeded) * 100;
+            const xpPercent = xpNeeded > 0 ? (xp / xpNeeded) * 100 : 0;
             document.getElementById('xpBar').style.width = xpPercent + '%';
-            document.getElementById('xpText').textContent = `${xp} / ${xpNeeded} XP`;
+            document.getElementById('xpText').textContent = xpNeeded > 0 ? `${xp} / ${xpNeeded} XP` : 'Boss Fight!';
         }
 
         function updateBossHealth() {
@@ -888,7 +985,7 @@
         function levelUp() {
             currentLevel++;
             
-            if (currentLevel > 3) {
+            if (currentLevel > MAX_LEVEL) {
                 gameState = 'win';
                 document.getElementById('winScore').textContent = score;
                 document.getElementById('winScreen').classList.remove('hidden');
@@ -896,8 +993,9 @@
             }
 
             gameState = 'levelup';
-            document.getElementById('newLevelName').textContent = levels[currentLevel].name;
-            document.getElementById('levelDescription').textContent = levels[currentLevel].description;
+            const nextLevel = levels[currentLevel] || { name: 'Unknown', description: '' };
+            document.getElementById('newLevelName').textContent = `Level ${currentLevel}: ${nextLevel.name}`;
+            document.getElementById('levelDescription').textContent = nextLevel.description;
             document.getElementById('levelUpScreen').classList.remove('hidden');
         }
 
@@ -1023,12 +1121,7 @@
                     } else {
                         xp++;
                         if (xp >= xpNeeded) {
-                            if (currentLevel === 1) {
-                                gameState = 'boss';
-                                document.getElementById('bossScreen').classList.remove('hidden');
-                            } else {
-                                levelUp();
-                            }
+                            levelUp();
                         }
                     }
 
