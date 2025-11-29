@@ -773,7 +773,8 @@
             trapDuration: 5 * 60, // 5 seconds at 60fps
             trapX: 0,
             trapY: 0,
-            axeThrown: false
+            axeThrown: false,
+            wifeNetThrown: false
         };
 
         // Bomber (Level 4)
@@ -1146,6 +1147,7 @@
             netTrap.isTrapped = false;
             netTrap.trapTimer = 0;
             netTrap.axeThrown = false;
+            netTrap.wifeNetThrown = false;
             bomber = null;
             barriers = [];
             window.mazePaths = []; // Clear maze paths from previous level
@@ -1187,27 +1189,27 @@
                 ensureAuroraAmbience(true);
             } else if (currentLevel === LEVEL_IDS.CORN_MAZE) {
                 spawnBarriersForLevel(LEVEL_IDS.CORN_MAZE);
-                // Position turkey on a path cell (row 17 is a path row in escape maze)
-                const cellHeight = BASE_HEIGHT / 19;
-                turkey.y = cellHeight * 17 + cellHeight / 2;
+                // Position turkey on a path cell (row 12 is center of path row in 25-row maze)
+                const cellHeight = BASE_HEIGHT / 25;
+                turkey.y = cellHeight * 12 + cellHeight / 2;
             } else if (currentLevel === LEVEL_IDS.PARADE) {
                 spawnParadeWorkshop();
                 initParadeFloatBuilder();
             } else if (currentLevel === LEVEL_IDS.BARN_ESCAPE) {
                 spawnBarriersForLevel(LEVEL_IDS.BARN_ESCAPE);
-                // Position turkey on a path cell (row 17 is a path row in escape maze)
-                const cellHeight = BASE_HEIGHT / 19;
-                turkey.y = cellHeight * 17 + cellHeight / 2;
+                // Position turkey on a path cell (row 12 is center of path row in 25-row maze)
+                const cellHeight = BASE_HEIGHT / 25;
+                turkey.y = cellHeight * 12 + cellHeight / 2;
             } else if (currentLevel === LEVEL_IDS.WOOD_ESCAPE) {
                 spawnBarriersForLevel(LEVEL_IDS.WOOD_ESCAPE);
-                // Position turkey on a path cell
-                const cellHeight = BASE_HEIGHT / 19;
-                turkey.y = cellHeight * 17 + cellHeight / 2;
+                // Position turkey on a path cell (row 12 is center of path row in 25-row maze)
+                const cellHeight = BASE_HEIGHT / 25;
+                turkey.y = cellHeight * 12 + cellHeight / 2;
             } else if (currentLevel === LEVEL_IDS.SPACE_ESCAPE) {
                 spawnBarriersForLevel(LEVEL_IDS.SPACE_ESCAPE);
-                // Position turkey on a path cell
-                const cellHeight = BASE_HEIGHT / 19;
-                turkey.y = cellHeight * 17 + cellHeight / 2;
+                // Position turkey on a path cell (row 12 is center of path row in 25-row maze)
+                const cellHeight = BASE_HEIGHT / 25;
+                turkey.y = cellHeight * 12 + cellHeight / 2;
             }
 
             updateUI();
@@ -1473,8 +1475,14 @@
             turkey.x = netTrap.trapX;
             turkey.y = netTrap.trapY;
             
-            // Throw axe after a short delay if not already thrown
-            if (!netTrap.axeThrown && netTrap.trapTimer <= netTrap.trapDuration - 60) {
+            // Wife throws another net when turkey is trapped (after 1 second)
+            if (!netTrap.wifeNetThrown && netTrap.trapTimer <= netTrap.trapDuration - 60) {
+                throwNet();
+                netTrap.wifeNetThrown = true;
+            }
+            
+            // Throw axe after a longer delay (3 seconds) - gives turkey time to escape
+            if (!netTrap.axeThrown && netTrap.trapTimer <= netTrap.trapDuration - 180) {
                 throwAxeAtTurkey();
                 netTrap.axeThrown = true;
             }
@@ -1485,11 +1493,12 @@
             // Count down trap timer
             netTrap.trapTimer--;
             
-            // Release turkey when timer expires
+            // Release turkey when timer expires - it pecked through the net!
             if (netTrap.trapTimer <= 0) {
                 netTrap.isTrapped = false;
                 netTrap.axeThrown = false;
-                spawnParticles(turkey.x, turkey.y, '#9DC183', 10); // Green particles for escape
+                netTrap.wifeNetThrown = false;
+                spawnParticles(turkey.x, turkey.y, '#9DC183', 15); // Green particles for escape
             }
         }
         
@@ -1727,25 +1736,32 @@
             barriers = [];
             labyrinthExit = null; // No exit - level completes by collecting treats
             
-            // Labyrinth pattern with double-wide paths (2 cells wide), no exit - collect treats to complete
+            // Labyrinth pattern with wider horizontal paths (3 cells tall) to match vertical paths (2 cells wide)
+            // 19 columns x 25 rows for better aspect ratio balance
             const mazePattern = [
                 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,0,0,1,1,0,0,1,1,1,1,1,0,0,1,1,0,0,1],
                 [1,0,0,1,1,0,0,1,1,1,1,1,0,0,1,1,0,0,1],
+                [1,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1],
                 [1,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1],
                 [1,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1],
                 [1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1],
                 [1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1],
                 [1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1],
                 [1,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1],
                 [1,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1],
+                [1,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1],
                 [1,0,0,1,1,0,0,1,1,1,1,1,0,0,1,1,0,0,1],
                 [1,0,0,1,1,0,0,1,1,1,1,1,0,0,1,1,0,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
             ];
@@ -2368,6 +2384,14 @@
         function updateLeftoverUI(statusMessage = null) {
             if (!speedBoostIndicatorEl || !speedBoostCountEl) return;
             
+            // Hide speed boost indicator on the first level (not possible to earn enough scraps)
+            if (currentLevel === LEVEL_IDS.BARN_TURKEY) {
+                speedBoostIndicatorEl.style.display = 'none';
+                return;
+            } else {
+                speedBoostIndicatorEl.style.display = 'flex';
+            }
+            
             const abilityState = leftoverBuffs.cranberry;
             const abilityConfig = LEFTOVER_CONFIG.cranberry;
             const cost = abilityConfig.cost;
@@ -2758,6 +2782,7 @@
                             netTrap.trapX = turkey.x;
                             netTrap.trapY = turkey.y;
                             netTrap.axeThrown = false;
+                            netTrap.wifeNetThrown = false;
                             spawnParticles(turkey.x, turkey.y, '#8B4513', 15);
                         }
                         thrownNets.splice(i, 1);
@@ -4457,6 +4482,11 @@
             ctx.font = 'bold 18px Fraunces';
             ctx.textAlign = 'center';
             ctx.fillText('⚠️ TRAPPED! ' + secondsLeft + 's', 0, -70);
+            
+            // Escape hint message
+            ctx.fillStyle = 'rgba(157, 193, 131, 0.95)';
+            ctx.font = 'bold 14px Fraunces';
+            ctx.fillText('🐔 Pecking through the net...', 0, -90);
             
             // Warning flash when axe is coming
             if (netTrap.axeThrown && thrownAxes.length > 0) {
