@@ -675,13 +675,13 @@
         // Level definitions
         const levels = {
             [LEVEL_IDS.BARN_TURKEY]: { name: 'Barn Turkey', xpNeeded: 10, bgColor: '#8B4513', description: 'Eat apples in the cozy barn!' },
-            [LEVEL_IDS.CORN_MAZE]: { name: 'Corn Labyrinth', xpNeeded: 8, bgColor: '#6b3e12', description: 'Navigate the twisting corn stalks and collect enough treats to complete the level!', isLabyrinth: true },
+            [LEVEL_IDS.CORN_MAZE]: { name: 'Corn Labyrinth', xpNeeded: 20, bgColor: '#6b3e12', description: 'Navigate the twisting corn stalks and collect enough treats to complete the level!', isLabyrinth: true },
             [LEVEL_IDS.PUMPKIN_PIE_BOSS]: { name: 'Pumpkin Pie Boss', xpNeeded: 0, bgColor: '#5D3A1A', description: 'Face the pumpkin pie boss and gobble your way to freedom!' },
-            [LEVEL_IDS.BARN_ESCAPE]: { name: 'Barn Labyrinth', xpNeeded: 10, bgColor: '#228B22', description: 'Find your way through the haybale maze and collect enough treats to complete the level!', isLabyrinth: true },
-            [LEVEL_IDS.HUNTER_SIEGE]: { name: 'Hunter Boss', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Dodge bullets from the hunter AND nets from his wife! Get trapped and the hunter throws an axe - hide behind barriers!' },
-            [LEVEL_IDS.WOOD_ESCAPE]: { name: 'Forest Labyrinth', xpNeeded: 12, bgColor: '#1f2a1c', description: 'The dark woods twist and turn. Collect enough treats to escape!', isLabyrinth: true },
+            [LEVEL_IDS.BARN_ESCAPE]: { name: 'Barn Labyrinth', xpNeeded: 20, bgColor: '#228B22', description: 'Find your way through the haybale maze and collect enough treats to complete the level!', isLabyrinth: true },
+            [LEVEL_IDS.HUNTER_SIEGE]: { name: 'Hunter Boss', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Dodge bullets from the hunter AND nets from his wife! Get trapped and peck to escape! Hide behind barriers!' },
+            [LEVEL_IDS.WOOD_ESCAPE]: { name: 'Forest Labyrinth', xpNeeded: 20, bgColor: '#1f2a1c', description: 'The dark woods twist and turn. Collect enough treats to escape!', isLabyrinth: true },
             [LEVEL_IDS.STEALTH_BOMBER]: { name: 'Stealth Bomber Boss', xpNeeded: 3, bgColor: '#0f1a2b', description: 'The runway is exposed. Survive three bombing runs.' },
-            [LEVEL_IDS.SPACE_ESCAPE]: { name: 'Space Labyrinth', xpNeeded: 15, bgColor: '#040c2c', description: 'Navigate through the cosmic maze and collect enough treats to warp home!', isLabyrinth: true },
+            [LEVEL_IDS.SPACE_ESCAPE]: { name: 'Space Labyrinth', xpNeeded: 20, bgColor: '#040c2c', description: 'Navigate through the cosmic maze and collect enough treats to warp home!', isLabyrinth: true },
             [LEVEL_IDS.NORTHERN_LIGHTS_BOSS]: { name: 'Northern Lights Boss', xpNeeded: 1, bgColor: '#082137', description: 'The aurora beast awakens. Pineapples fuel your survival.' },
             [LEVEL_IDS.PARADE]: { name: 'Victory Parade', xpNeeded: 6, bgColor: '#320b28', description: 'Run through the Thanksgiving parade! Collect treats from the cheering crowd!' }
         };
@@ -773,14 +773,17 @@
             trapDuration: 5 * 60, // 5 seconds at 60fps
             trapX: 0,
             trapY: 0,
-            axeThrown: false,
-            wifeNetThrown: false
+            axeThrown: false
         };
 
         // Bomber (Level 4)
         let bomber = null;
         let bomberBombs = [];
         let bomberRoundsSurvived = 0;
+        
+        // Maze treat spawn timer
+        let mazeTreatSpawnTimer = 0;
+        const MAZE_TREAT_SPAWN_INTERVAL = 90; // Spawn new treat every 1.5 seconds in maze levels
 
         // Northern lights effects
         let auroraWaves = [];
@@ -1147,10 +1150,10 @@
             netTrap.isTrapped = false;
             netTrap.trapTimer = 0;
             netTrap.axeThrown = false;
-            netTrap.wifeNetThrown = false;
             bomber = null;
             barriers = [];
             window.mazePaths = []; // Clear maze paths from previous level
+            mazeTreatSpawnTimer = 0; // Reset treat spawn timer
             labyrinthExit = null; // Clear labyrinth exit from previous level
             paradeFloat = null;
             xp = 0;
@@ -1234,7 +1237,9 @@
                 patrolBounds: getHunterPatrolBounds(),
                 muzzleFlash: 0,
                 animPhase: 0,
-                breathePhase: 0
+                breathePhase: 0,
+                lastGunShotTime: 0, // Track when gun was last fired
+                lastAxeThrowTime: 0 // Track when axe was last thrown
             };
             
             // Wife on the right side with a net
@@ -1475,12 +1480,6 @@
             turkey.x = netTrap.trapX;
             turkey.y = netTrap.trapY;
             
-            // Wife throws another net when turkey is trapped (after 1 second)
-            if (!netTrap.wifeNetThrown && netTrap.trapTimer <= netTrap.trapDuration - 60) {
-                throwNet();
-                netTrap.wifeNetThrown = true;
-            }
-            
             // Throw axe after a longer delay (3 seconds) - gives turkey time to escape
             if (!netTrap.axeThrown && netTrap.trapTimer <= netTrap.trapDuration - 180) {
                 throwAxeAtTurkey();
@@ -1497,13 +1496,20 @@
             if (netTrap.trapTimer <= 0) {
                 netTrap.isTrapped = false;
                 netTrap.axeThrown = false;
-                netTrap.wifeNetThrown = false;
                 spawnParticles(turkey.x, turkey.y, '#9DC183', 15); // Green particles for escape
             }
         }
         
         function throwAxeAtTurkey() {
             if (!hunter) return;
+            
+            // Check if enough time has passed since last gun shot (5 seconds = 300 frames)
+            const currentTime = Date.now();
+            const timeSinceGunShot = currentTime - hunter.lastGunShotTime;
+            if (timeSinceGunShot < 5000) return; // Must wait 5 seconds after gun shot
+            
+            // Record axe throw time
+            hunter.lastAxeThrowTime = currentTime;
             
             // Calculate trajectory to trapped turkey
             const dx = turkey.x - hunter.x;
@@ -1798,15 +1804,33 @@
                 }
             }
             
-            // Store maze paths for apple spawning
+            // Store maze paths for apple spawning - only include cells far from walls
             window.mazePaths = [];
             for (let row = 0; row < patternRows; row++) {
                 for (let col = 0; col < patternCols; col++) {
                     if (mazePattern[row][col] === 0) {
-                        window.mazePaths.push({
-                            x: col * cellWidth + cellWidth / 2,
-                            y: row * cellHeight + cellHeight / 2
-                        });
+                        // Check if this cell is surrounded by open paths (not adjacent to walls)
+                        // This ensures treats spawn in the center of corridors, not near edges
+                        let adjacentWalls = 0;
+                        for (let dr = -1; dr <= 1; dr++) {
+                            for (let dc = -1; dc <= 1; dc++) {
+                                if (dr === 0 && dc === 0) continue;
+                                const nr = row + dr;
+                                const nc = col + dc;
+                                if (nr < 0 || nr >= patternRows || nc < 0 || nc >= patternCols) {
+                                    adjacentWalls++;
+                                } else if (mazePattern[nr][nc] === 1) {
+                                    adjacentWalls++;
+                                }
+                            }
+                        }
+                        // Only include cells with at most 2 adjacent walls (well within open paths)
+                        if (adjacentWalls <= 2) {
+                            window.mazePaths.push({
+                                x: col * cellWidth + cellWidth / 2,
+                                y: row * cellHeight + cellHeight / 2
+                            });
+                        }
                     }
                 }
             }
@@ -2176,7 +2200,7 @@
             if (apples.length >= maxApples) {
                 return;
             }
-            const size = currentLevel === LEVEL_IDS.PARADE ? 32 : 25;
+            const size = currentLevel === LEVEL_IDS.PARADE ? 38 : 32;
             
             // Check if we're on a maze level with stored paths
             const isMazeLevel = currentLevel === LEVEL_IDS.CORN_MAZE || 
@@ -2199,7 +2223,7 @@
                 return;
             }
             
-            // For maze levels, spawn on paths
+            // For maze levels, spawn on paths - only at exact cell centers
             if (isMazeLevel && window.mazePaths && window.mazePaths.length > 0) {
                 // Pick a random path location
                 let attempts = 0;
@@ -2211,8 +2235,8 @@
                     const tooClose = apples.some(a => Math.hypot(a.x - pathCell.x, a.y - pathCell.y) < 60);
                     if (!tooClose) {
                         apples.push({
-                            x: pathCell.x + (Math.random() - 0.5) * 20,
-                            y: pathCell.y + (Math.random() - 0.5) * 20,
+                            x: pathCell.x,
+                            y: pathCell.y,
                             size,
                             rotation: Math.random() * Math.PI * 2,
                             bobOffset: Math.random() * Math.PI * 2
@@ -2378,7 +2402,31 @@
         }
 
         function activateContextAbility() {
+            // If trapped in net, peck to escape faster
+            if (netTrap.isTrapped) {
+                peckThroughNet();
+                return;
+            }
             craftCranberryDash();
+        }
+        
+        function peckThroughNet() {
+            if (!netTrap.isTrapped) return;
+            
+            // Peck animation
+            isPecking = true;
+            peckAnimTimer = 15;
+            
+            // Each peck reduces trap time significantly (about 1 second worth)
+            netTrap.trapTimer -= 60;
+            spawnParticles(turkey.x, turkey.y, '#9DC183', 8); // Green particles for progress
+            
+            // Check if escaped
+            if (netTrap.trapTimer <= 0) {
+                netTrap.isTrapped = false;
+                netTrap.axeThrown = false;
+                spawnParticles(turkey.x, turkey.y, '#9DC183', 20); // Big burst for escape
+            }
         }
 
         function updateLeftoverUI(statusMessage = null) {
@@ -2642,6 +2690,18 @@
 
             // Labyrinth levels now complete when enough treats are collected (handled in apple collision)
             // No exit to find - just collect treats!
+            
+            // Periodic treat spawning for maze levels
+            if (isLabyrinthLevel() && gameState === 'playing') {
+                mazeTreatSpawnTimer++;
+                if (mazeTreatSpawnTimer >= MAZE_TREAT_SPAWN_INTERVAL) {
+                    mazeTreatSpawnTimer = 0;
+                    // Spawn a treat if under reasonable limit
+                    if (apples.length < 8) {
+                        spawnApple();
+                    }
+                }
+            }
 
             if (gameState === 'boss' && boss && peckCooldown === 0) {
                 const bossRadius = boss.type === BOSS_TYPES.AURORA ? boss.radius : boss.width / 2;
@@ -2723,43 +2783,53 @@
                         hunter.shotsFired = 0;
                     }
                 } else {
-                    // Hunter can shoot - fires 3 shots then reloads
-                    hunter.shootTimer++;
-                    if (hunter.shootTimer > 50) { // Slightly faster between shots in burst
-                        hunter.shootTimer = 0;
-                        const angle = Math.atan2(turkey.y - hunter.y, turkey.x - hunter.x);
-                        
-                        // Muzzle flash effect
-                        hunter.muzzleFlash = 10;
-                        
-                        // Spawn muzzle particles
-                        for (let p = 0; p < 5; p++) {
-                            particles.push({
+                    // Check if enough time has passed since last axe throw (5 seconds)
+                    const currentTime = Date.now();
+                    const timeSinceAxeThrow = currentTime - hunter.lastAxeThrowTime;
+                    const canShoot = timeSinceAxeThrow >= 5000; // Must wait 5 seconds after axe throw
+                    
+                    if (canShoot) {
+                        // Hunter can shoot - fires 3 shots then reloads
+                        hunter.shootTimer++;
+                        if (hunter.shootTimer > 50) { // Slightly faster between shots in burst
+                            hunter.shootTimer = 0;
+                            const angle = Math.atan2(turkey.y - hunter.y, turkey.x - hunter.x);
+                            
+                            // Record gun shot time
+                            hunter.lastGunShotTime = currentTime;
+                            
+                            // Muzzle flash effect
+                            hunter.muzzleFlash = 10;
+                            
+                            // Spawn muzzle particles
+                            for (let p = 0; p < 5; p++) {
+                                particles.push({
+                                    x: hunter.x + 35,
+                                    y: hunter.y - 5,
+                                    vx: Math.cos(angle) * (3 + Math.random() * 2) + (Math.random() - 0.5),
+                                    vy: Math.sin(angle) * (3 + Math.random() * 2) + (Math.random() - 0.5),
+                                    life: 0.5,
+                                    color: ['#FF4500', '#FFD700', '#FF6347'][p % 3],
+                                    size: 4 + Math.random() * 3
+                                });
+                            }
+                            
+                            bossProjectiles.push({
                                 x: hunter.x + 35,
                                 y: hunter.y - 5,
-                                vx: Math.cos(angle) * (3 + Math.random() * 2) + (Math.random() - 0.5),
-                                vy: Math.sin(angle) * (3 + Math.random() * 2) + (Math.random() - 0.5),
-                                life: 0.5,
-                                color: ['#FF4500', '#FFD700', '#FF6347'][p % 3],
-                                size: 4 + Math.random() * 3
+                                vx: Math.cos(angle) * 8,
+                                vy: Math.sin(angle) * 8,
+                                size: 12,
+                                isHunter: true,
+                                type: 'bullet',
+                                onHitMessage: 'You got shot!'
                             });
-                        }
-                        
-                        bossProjectiles.push({
-                            x: hunter.x + 35,
-                            y: hunter.y - 5,
-                            vx: Math.cos(angle) * 8,
-                            vy: Math.sin(angle) * 8,
-                            size: 12,
-                            isHunter: true,
-                            type: 'bullet',
-                            onHitMessage: 'You got shot!'
-                        });
-                        
-                        hunter.shotsFired++;
-                        if (hunter.shotsFired >= 3) {
-                            // Start reloading after 3 shots
-                            beginHunterReload();
+                            
+                            hunter.shotsFired++;
+                            if (hunter.shotsFired >= 3) {
+                                // Start reloading after 3 shots
+                                beginHunterReload();
+                            }
                         }
                     }
                 }
@@ -2782,8 +2852,14 @@
                             netTrap.trapX = turkey.x;
                             netTrap.trapY = turkey.y;
                             netTrap.axeThrown = false;
-                            netTrap.wifeNetThrown = false;
                             spawnParticles(turkey.x, turkey.y, '#8B4513', 15);
+                            // Wife must wait 5 seconds after catching turkey before throwing again
+                            if (hunterWife) {
+                                hunterWife.throwTimer = 0;
+                                hunterWife.throwCooldown = 300; // 5 seconds
+                                hunterWife.isWindingUp = false;
+                                hunterWife.windupTimer = 0;
+                            }
                         }
                         thrownNets.splice(i, 1);
                     }
@@ -4483,10 +4559,10 @@
             ctx.textAlign = 'center';
             ctx.fillText('⚠️ TRAPPED! ' + secondsLeft + 's', 0, -70);
             
-            // Escape hint message
+            // Escape hint message - show peck instruction
             ctx.fillStyle = 'rgba(157, 193, 131, 0.95)';
             ctx.font = 'bold 14px Fraunces';
-            ctx.fillText('🐔 Pecking through the net...', 0, -90);
+            ctx.fillText('🐔 PECK to escape! (SPACE/Double-click)', 0, -90);
             
             // Warning flash when axe is coming
             if (netTrap.axeThrown && thrownAxes.length > 0) {
