@@ -526,7 +526,7 @@
             <div class="level-display" id="levelDisplay">Level 1: Barn Turkey</div>
             <div class="speed-boost-indicator" id="speedBoostIndicator">
                 <span class="speed-icon">⚡</span>
-                <span class="speed-count" id="speedBoostCount">0/4</span>
+                <span class="speed-count" id="speedBoostCount">0/10</span>
             </div>
             <div class="score-display"><span id="scoreIcon" aria-hidden="true">🍎</span> <span id="scoreDisplay">0</span></div>
         </div>
@@ -678,7 +678,7 @@
             [LEVEL_IDS.CORN_MAZE]: { name: 'Corn Labyrinth', xpNeeded: 0, bgColor: '#6b3e12', description: 'Navigate the twisting corn stalks and find the glowing exit to escape!', isLabyrinth: true },
             [LEVEL_IDS.PUMPKIN_PIE_BOSS]: { name: 'Pumpkin Pie Boss', xpNeeded: 0, bgColor: '#5D3A1A', description: 'Face the pumpkin pie boss and gobble your way to freedom!' },
             [LEVEL_IDS.BARN_ESCAPE]: { name: 'Barn Labyrinth', xpNeeded: 0, bgColor: '#228B22', description: 'Find your way through the haybale maze and reach the exit!', isLabyrinth: true },
-            [LEVEL_IDS.HUNTER_SIEGE]: { name: 'Hunter Boss', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Dodge bullets from the hunter AND nets from his wife! Hide behind cover.' },
+            [LEVEL_IDS.HUNTER_SIEGE]: { name: 'Hunter Boss', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Dodge bullets from the hunter AND nets from his wife! Get trapped and the hunter throws an axe - hide behind barriers!' },
             [LEVEL_IDS.WOOD_ESCAPE]: { name: 'Forest Labyrinth', xpNeeded: 0, bgColor: '#1f2a1c', description: 'The dark woods twist and turn. Find the glowing exit to escape!', isLabyrinth: true },
             [LEVEL_IDS.STEALTH_BOMBER]: { name: 'Stealth Bomber Boss', xpNeeded: 3, bgColor: '#0f1a2b', description: 'The runway is exposed. Survive three bombing runs.' },
             [LEVEL_IDS.SPACE_ESCAPE]: { name: 'Space Labyrinth', xpNeeded: 0, bgColor: '#040c2c', description: 'Navigate through the cosmic maze and find the warp gate to escape!', isLabyrinth: true },
@@ -690,7 +690,7 @@
         const LEFTOVER_CONFIG = Object.freeze({
             scrapsPerFruit: 1,
             cranberry: {
-                cost: 4,
+                cost: 10,
                 duration: 6 * 60,
                 cooldown: 8 * 60,
                 speedBoost: 1.6
@@ -764,6 +764,17 @@
         let hunter = null;
         let hunterWife = null;
         let thrownNets = [];
+        let thrownAxes = [];
+        
+        // Net trap state
+        const netTrap = {
+            isTrapped: false,
+            trapTimer: 0,
+            trapDuration: 5 * 60, // 5 seconds at 60fps
+            trapX: 0,
+            trapY: 0,
+            axeThrown: false
+        };
 
         // Bomber (Level 4)
         let bomber = null;
@@ -1131,6 +1142,10 @@
             hunter = null;
             hunterWife = null;
             thrownNets = [];
+            thrownAxes = [];
+            netTrap.isTrapped = false;
+            netTrap.trapTimer = 0;
+            netTrap.axeThrown = false;
             bomber = null;
             barriers = [];
             window.mazePaths = []; // Clear maze paths from previous level
@@ -1138,6 +1153,7 @@
             paradeFloat = null;
             xp = 0;
             bomberRoundsSurvived = 0;
+            resetLeftovers(); // Reset energy (scraps) at the start of each level
             xpNeeded = (levels[currentLevel] && levels[currentLevel].xpNeeded) || 10;
             turkey.x = 300;
             turkey.y = 400;
@@ -1446,6 +1462,149 @@
                 if (net.x < -100 || net.x > BASE_WIDTH + 100 || 
                     net.y < -100 || net.y > BASE_HEIGHT + 100 || net.life <= 0) {
                     thrownNets.splice(i, 1);
+                }
+            }
+        }
+        
+        function updateNetTrap() {
+            if (!netTrap.isTrapped) return;
+            
+            // Keep turkey trapped in position
+            turkey.x = netTrap.trapX;
+            turkey.y = netTrap.trapY;
+            
+            // Throw axe after a short delay if not already thrown
+            if (!netTrap.axeThrown && netTrap.trapTimer <= netTrap.trapDuration - 60) {
+                throwAxeAtTurkey();
+                netTrap.axeThrown = true;
+            }
+            
+            // Update thrown axes
+            updateThrownAxes();
+            
+            // Count down trap timer
+            netTrap.trapTimer--;
+            
+            // Release turkey when timer expires
+            if (netTrap.trapTimer <= 0) {
+                netTrap.isTrapped = false;
+                netTrap.axeThrown = false;
+                spawnParticles(turkey.x, turkey.y, '#9DC183', 10); // Green particles for escape
+            }
+        }
+        
+        function throwAxeAtTurkey() {
+            if (!hunter) return;
+            
+            // Calculate trajectory to trapped turkey
+            const dx = turkey.x - hunter.x;
+            const dy = turkey.y - hunter.y;
+            const dist = Math.hypot(dx, dy);
+            const speed = 6;
+            
+            thrownAxes.push({
+                x: hunter.x + 35,
+                y: hunter.y,
+                vx: (dx / dist) * speed,
+                vy: (dy / dist) * speed,
+                rotation: 0,
+                rotationSpeed: 0.3,
+                size: 30
+            });
+            
+            // Visual feedback - spawn particles
+            for (let i = 0; i < 6; i++) {
+                particles.push({
+                    x: hunter.x + 35,
+                    y: hunter.y,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 3,
+                    life: 0.6,
+                    decay: 0.03,
+                    color: '#8B4513'
+                });
+            }
+        }
+        
+        function checkAxePathBlocked(axe) {
+            // Check if any barrier is between the axe and the turkey
+            const axeToTurkeyDx = turkey.x - axe.x;
+            const axeToTurkeyDy = turkey.y - axe.y;
+            const axeToTurkeyDist = Math.hypot(axeToTurkeyDx, axeToTurkeyDy);
+            
+            if (axeToTurkeyDist < 1) return false;
+            
+            // Normalize direction
+            const dirX = axeToTurkeyDx / axeToTurkeyDist;
+            const dirY = axeToTurkeyDy / axeToTurkeyDist;
+            
+            // Check each barrier
+            for (const barrier of barriers) {
+                const barrierDx = barrier.x - axe.x;
+                const barrierDy = barrier.y - axe.y;
+                const barrierDist = Math.hypot(barrierDx, barrierDy);
+                
+                // Skip if barrier is further than turkey
+                if (barrierDist > axeToTurkeyDist) continue;
+                
+                // Calculate how close the path passes to the barrier center
+                const dot = barrierDx * dirX + barrierDy * dirY;
+                if (dot < 0) continue; // Barrier is behind axe
+                
+                const closestX = axe.x + dirX * dot;
+                const closestY = axe.y + dirY * dot;
+                
+                // Check if the closest point is within the barrier bounds
+                const halfW = barrier.width / 2;
+                const halfH = barrier.height / 2;
+                
+                if (closestX > barrier.x - halfW && closestX < barrier.x + halfW &&
+                    closestY > barrier.y - halfH && closestY < barrier.y + halfH) {
+                    return true; // Path is blocked
+                }
+            }
+            return false;
+        }
+        
+        function updateThrownAxes() {
+            for (let i = thrownAxes.length - 1; i >= 0; i--) {
+                const axe = thrownAxes[i];
+                
+                axe.x += axe.vx;
+                axe.y += axe.vy;
+                axe.rotation += axe.rotationSpeed;
+                
+                // Check collision with barriers
+                let hitBarrier = false;
+                for (const barrier of barriers) {
+                    if (axe.x > barrier.x - barrier.width / 2 &&
+                        axe.x < barrier.x + barrier.width / 2 &&
+                        axe.y > barrier.y - barrier.height / 2 &&
+                        axe.y < barrier.y + barrier.height / 2) {
+                        // Axe hit barrier - blocked!
+                        spawnParticles(axe.x, axe.y, '#8B4513', 8);
+                        thrownAxes.splice(i, 1);
+                        hitBarrier = true;
+                        break;
+                    }
+                }
+                if (hitBarrier) continue;
+                
+                // Check collision with turkey
+                const dist = Math.hypot(turkey.x - axe.x, turkey.y - axe.y);
+                if (dist < turkey.width / 2 + axe.size / 2) {
+                    // Axe hit the trapped turkey!
+                    if (handleTurkeyDamage('Hit by an axe!')) {
+                        return;
+                    }
+                    thrownAxes.splice(i, 1);
+                    continue;
+                }
+                
+                // Remove if off screen
+                if (axe.x < -100 || axe.x > BASE_WIDTH + 100 || 
+                    axe.y < -100 || axe.y > BASE_HEIGHT + 100) {
+                    thrownAxes.splice(i, 1);
                 }
             }
         }
@@ -2373,7 +2532,12 @@
                 updateLeftoverUI();
             }
 
-            // Move turkey
+            // Move turkey (skip if trapped in net)
+            if (netTrap.isTrapped) {
+                // Turkey is trapped - keep in place
+                turkey.x = netTrap.trapX;
+                turkey.y = netTrap.trapY;
+            }
             let keyboardDx = 0;
             let keyboardDy = 0;
             let moveDx = 0;
@@ -2593,11 +2757,22 @@
                     const net = thrownNets[i];
                     const dist = Math.hypot(turkey.x - net.x, turkey.y - net.y);
                     if (dist < turkey.width / 2 + net.size / 3) {
-                        if (handleTurkeyDamage('Caught in a net!')) {
-                            return;
+                        // Trap the turkey instead of killing immediately
+                        if (!netTrap.isTrapped) {
+                            netTrap.isTrapped = true;
+                            netTrap.trapTimer = netTrap.trapDuration;
+                            netTrap.trapX = turkey.x;
+                            netTrap.trapY = turkey.y;
+                            netTrap.axeThrown = false;
+                            spawnParticles(turkey.x, turkey.y, '#8B4513', 15);
                         }
                         thrownNets.splice(i, 1);
                     }
+                }
+                
+                // Handle trapped turkey state
+                if (netTrap.isTrapped) {
+                    updateNetTrap();
                 }
             }
 
@@ -4205,6 +4380,100 @@
             });
         }
         
+        function drawThrownAxes() {
+            thrownAxes.forEach(axe => {
+                ctx.save();
+                ctx.translate(axe.x, axe.y);
+                ctx.rotate(axe.rotation);
+                
+                // Axe handle
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(-3, -axe.size / 2, 6, axe.size);
+                
+                // Axe head
+                ctx.fillStyle = '#708090';
+                ctx.beginPath();
+                ctx.moveTo(-3, -axe.size / 2);
+                ctx.lineTo(-axe.size / 2 - 5, -axe.size / 2 + 5);
+                ctx.lineTo(-axe.size / 2 - 5, -axe.size / 2 + 15);
+                ctx.lineTo(-3, -axe.size / 2 + 10);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Axe head other side
+                ctx.beginPath();
+                ctx.moveTo(3, -axe.size / 2);
+                ctx.lineTo(axe.size / 2 + 5, -axe.size / 2 + 5);
+                ctx.lineTo(axe.size / 2 + 5, -axe.size / 2 + 15);
+                ctx.lineTo(3, -axe.size / 2 + 10);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Metal shine
+                ctx.strokeStyle = '#A9A9A9';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-axe.size / 2, -axe.size / 2 + 8);
+                ctx.lineTo(axe.size / 2, -axe.size / 2 + 8);
+                ctx.stroke();
+                
+                ctx.restore();
+            });
+        }
+        
+        function drawNetTrap() {
+            if (!netTrap.isTrapped) return;
+            
+            ctx.save();
+            ctx.translate(netTrap.trapX, netTrap.trapY);
+            
+            // Pulsing effect based on timer
+            const pulse = Math.sin(Date.now() * 0.01) * 0.2 + 0.8;
+            
+            // Net surrounding turkey
+            ctx.strokeStyle = `rgba(139, 69, 19, ${pulse})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, 50, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Net mesh pattern
+            ctx.strokeStyle = `rgba(210, 180, 140, ${pulse * 0.8})`;
+            ctx.lineWidth = 2;
+            
+            // Radial lines
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(angle) * 50, Math.sin(angle) * 50);
+                ctx.stroke();
+            }
+            
+            // Circular lines
+            for (let r = 1; r <= 4; r++) {
+                ctx.beginPath();
+                ctx.arc(0, 0, 50 * (r / 4), 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            // Danger indicator - countdown
+            const secondsLeft = Math.ceil(netTrap.trapTimer / 60);
+            ctx.fillStyle = 'rgba(255, 50, 50, 0.9)';
+            ctx.font = 'bold 18px Fraunces';
+            ctx.textAlign = 'center';
+            ctx.fillText('⚠️ TRAPPED! ' + secondsLeft + 's', 0, -70);
+            
+            // Warning flash when axe is coming
+            if (netTrap.axeThrown && thrownAxes.length > 0) {
+                ctx.fillStyle = 'rgba(255, 100, 0, 0.8)';
+                ctx.font = 'bold 14px Fraunces';
+                ctx.fillText('🪓 AXE INCOMING!', 0, 80);
+            }
+            
+            ctx.restore();
+        }
+        
         function drawBarriers() {
             barriers.forEach(barrier => {
                 ctx.save();
@@ -4761,6 +5030,8 @@
                 if (hunter) drawHunter();
                 if (hunterWife) drawHunterWife();
                 if (thrownNets.length) drawThrownNets();
+                if (thrownAxes.length) drawThrownAxes();
+                if (netTrap.isTrapped) drawNetTrap();
                 if (currentLevel === LEVEL_IDS.STEALTH_BOMBER && bomber) {
                     drawBomber();
                 }
