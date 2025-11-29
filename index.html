@@ -675,13 +675,13 @@
         // Level definitions
         const levels = {
             [LEVEL_IDS.BARN_TURKEY]: { name: 'Barn Turkey', xpNeeded: 10, bgColor: '#8B4513', description: 'Eat apples in the cozy barn!' },
-            [LEVEL_IDS.CORN_MAZE]: { name: 'Corn Labyrinth', xpNeeded: 0, bgColor: '#6b3e12', description: 'Navigate the twisting corn stalks and find the glowing exit to escape!', isLabyrinth: true },
+            [LEVEL_IDS.CORN_MAZE]: { name: 'Corn Labyrinth', xpNeeded: 8, bgColor: '#6b3e12', description: 'Navigate the twisting corn stalks and collect enough treats to complete the level!', isLabyrinth: true },
             [LEVEL_IDS.PUMPKIN_PIE_BOSS]: { name: 'Pumpkin Pie Boss', xpNeeded: 0, bgColor: '#5D3A1A', description: 'Face the pumpkin pie boss and gobble your way to freedom!' },
-            [LEVEL_IDS.BARN_ESCAPE]: { name: 'Barn Labyrinth', xpNeeded: 0, bgColor: '#228B22', description: 'Find your way through the haybale maze and reach the exit!', isLabyrinth: true },
+            [LEVEL_IDS.BARN_ESCAPE]: { name: 'Barn Labyrinth', xpNeeded: 10, bgColor: '#228B22', description: 'Find your way through the haybale maze and collect enough treats to complete the level!', isLabyrinth: true },
             [LEVEL_IDS.HUNTER_SIEGE]: { name: 'Hunter Boss', xpNeeded: 20, bgColor: '#2F4F4F', description: 'Dodge bullets from the hunter AND nets from his wife! Get trapped and the hunter throws an axe - hide behind barriers!' },
-            [LEVEL_IDS.WOOD_ESCAPE]: { name: 'Forest Labyrinth', xpNeeded: 0, bgColor: '#1f2a1c', description: 'The dark woods twist and turn. Find the glowing exit to escape!', isLabyrinth: true },
+            [LEVEL_IDS.WOOD_ESCAPE]: { name: 'Forest Labyrinth', xpNeeded: 12, bgColor: '#1f2a1c', description: 'The dark woods twist and turn. Collect enough treats to escape!', isLabyrinth: true },
             [LEVEL_IDS.STEALTH_BOMBER]: { name: 'Stealth Bomber Boss', xpNeeded: 3, bgColor: '#0f1a2b', description: 'The runway is exposed. Survive three bombing runs.' },
-            [LEVEL_IDS.SPACE_ESCAPE]: { name: 'Space Labyrinth', xpNeeded: 0, bgColor: '#040c2c', description: 'Navigate through the cosmic maze and find the warp gate to escape!', isLabyrinth: true },
+            [LEVEL_IDS.SPACE_ESCAPE]: { name: 'Space Labyrinth', xpNeeded: 15, bgColor: '#040c2c', description: 'Navigate through the cosmic maze and collect enough treats to warp home!', isLabyrinth: true },
             [LEVEL_IDS.NORTHERN_LIGHTS_BOSS]: { name: 'Northern Lights Boss', xpNeeded: 1, bgColor: '#082137', description: 'The aurora beast awakens. Pineapples fuel your survival.' },
             [LEVEL_IDS.PARADE]: { name: 'Victory Parade', xpNeeded: 6, bgColor: '#320b28', description: 'Run through the Thanksgiving parade! Collect treats from the cheering crowd!' }
         };
@@ -1722,30 +1722,30 @@
         // Labyrinth exit zone for escape levels
         let labyrinthExit = null;
 
-        // Generate labyrinth maze for escape levels - full screen with exit at top
+        // Generate labyrinth maze for escape levels - collect treats to complete, no exit
         function generateEscapeMaze(wallType, doorChance = 0.35) {
             barriers = [];
-            labyrinthExit = null;
+            labyrinthExit = null; // No exit - level completes by collecting treats
             
-            // Labyrinth pattern with exit at top center (1 = wall, 0 = path, 2 = exit)
+            // Labyrinth pattern with double-wide paths (2 cells wide), no exit - collect treats to complete
             const mazePattern = [
-                [1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                [1,1,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,1,1],
-                [1,0,0,1,0,1,0,0,0,0,0,0,0,1,0,1,0,0,1],
-                [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+                [1,0,0,1,1,0,0,1,1,1,1,1,0,0,1,1,0,0,1],
+                [1,0,0,1,1,0,0,1,1,1,1,1,0,0,1,1,0,0,1],
+                [1,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1],
+                [1,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1],
+                [1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1],
+                [1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                [1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1],
-                [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1],
-                [1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
-                [1,0,0,1,0,1,0,0,0,0,0,0,0,1,0,1,0,0,1],
-                [1,1,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,1,1],
-                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+                [1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1],
+                [1,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,1],
+                [1,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1],
+                [1,0,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1],
+                [1,0,0,1,1,0,0,1,1,1,1,1,0,0,1,1,0,0,1],
+                [1,0,0,1,1,0,0,1,1,1,1,1,0,0,1,1,0,0,1],
                 [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
                 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
             ];
@@ -2482,11 +2482,12 @@
             let needed = xpNeeded;
             let label = 'XP';
 
-            // Labyrinth levels show "Find the Exit" instead of XP progress
+            // Labyrinth levels show treat collection progress
             if (isLabyrinthLevel()) {
-                document.getElementById('xpBar').style.width = '100%';
                 document.getElementById('xpBar').style.background = 'linear-gradient(90deg, #00ff96, #00d4ff, #00ff96)';
-                document.getElementById('xpText').textContent = '🚪 Find the Exit! 🚪';
+                const treatPercent = xpNeeded > 0 ? Math.min(100, (xp / xpNeeded) * 100) : 0;
+                document.getElementById('xpBar').style.width = treatPercent + '%';
+                document.getElementById('xpText').textContent = `🍬 Treats: ${xp} / ${xpNeeded} 🍬`;
                 return;
             } else {
                 // Reset bar color for non-labyrinth levels
@@ -2615,15 +2616,8 @@
             clampTurkeyToBounds();
             enforceSolidBarriers();
 
-            // Check if turkey reached labyrinth exit
-            if (isLabyrinthLevel() && gameState === 'playing' && checkLabyrinthExit()) {
-                // Celebrate escape with particles
-                spawnParticles(turkey.x, turkey.y, '#FFD700', 30);
-                spawnParticles(turkey.x, turkey.y, '#00FF00', 20);
-                spawnParticles(labyrinthExit.x, labyrinthExit.y, '#FFFFFF', 25);
-                levelUp();
-                return;
-            }
+            // Labyrinth levels now complete when enough treats are collected (handled in apple collision)
+            // No exit to find - just collect treats!
 
             if (gameState === 'boss' && boss && peckCooldown === 0) {
                 const bossRadius = boss.type === BOSS_TYPES.AURORA ? boss.radius : boss.width / 2;
